@@ -1,0 +1,2446 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<title>Утренний бег</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230a0a0a'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23ffb000' font-family='sans-serif'%3E%E2%86%91%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Бег">
+
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --fg: #f4f1ea;
+    --muted: #7a746b;
+    --line: rgba(255,255,255,.07);
+    --card: rgba(255,255,255,.025);
+    --card-hover: rgba(255,255,255,.05);
+    --accent: #ffb000;
+    --accent-2: #ff7a1a;
+    --accent-glow: rgba(255,176,0,.35);
+    --accent-soft: rgba(255,176,0,.12);
+    --radius: 14px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+    --gutter: clamp(16px, 4vw, 44px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ============================================================
+     ФОН: живая сцена
+     Небо + звёзды (ночью) + облака (двигаются) +
+     лучи + солнце (по дуге) + зерно + виньетка.
+     ============================================================ */
+  .bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .bg-sky {
+    position: absolute;
+    inset: -10%;
+    background: linear-gradient(
+      180deg,
+      var(--sky-top) 0%,
+      var(--sky-mid) 45%,
+      var(--sky-bot) 100%
+    );
+    background-size: 100% 120%;
+    animation: skyShift 30s ease-in-out infinite alternate;
+    transition: background 3s ease;
+  }
+  @keyframes skyShift {
+    0%   { background-position: 0% 0%; }
+    100% { background-position: 0% 20%; }
+  }
+
+  .bg-stars {
+    position: absolute;
+    inset: 0;
+    opacity: var(--stars-opacity, 0);
+    transition: opacity 3s ease;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, #fff, transparent),
+      radial-gradient(1px 1px at 28% 32%, #fff, transparent),
+      radial-gradient(1.2px 1.2px at 45% 12%, #fff, transparent),
+      radial-gradient(1px 1px at 62% 28%, #fff, transparent),
+      radial-gradient(1.4px 1.4px at 78% 22%, #fff, transparent),
+      radial-gradient(1px 1px at 88% 40%, #fff, transparent),
+      radial-gradient(1px 1px at 18% 55%, #fff, transparent),
+      radial-gradient(1.2px 1.2px at 34% 62%, #fff, transparent),
+      radial-gradient(1px 1px at 52% 48%, #fff, transparent),
+      radial-gradient(1px 1px at 68% 58%, #fff, transparent),
+      radial-gradient(1.3px 1.3px at 84% 68%, #fff, transparent),
+      radial-gradient(1px 1px at 8% 78%, #fff, transparent),
+      radial-gradient(1px 1px at 24% 88%, #fff, transparent),
+      radial-gradient(1px 1px at 42% 82%, #fff, transparent),
+      radial-gradient(1.2px 1.2px at 58% 92%, #fff, transparent),
+      radial-gradient(1px 1px at 74% 84%, #fff, transparent),
+      radial-gradient(1px 1px at 92% 88%, #fff, transparent);
+    background-repeat: no-repeat;
+    animation: twinkle 4s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle {
+    0%   { filter: brightness(.7); }
+    100% { filter: brightness(1.3); }
+  }
+
+  .bg-clouds {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .cloud {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: var(--cloud-opacity, .35);
+    transition: background 3s ease, opacity 3s ease;
+    background: radial-gradient(
+      ellipse at center,
+      var(--cloud-color, rgba(255,255,255,.55)) 0%,
+      transparent 70%
+    );
+    will-change: transform;
+  }
+  .cloud-1 { width: 45vmax; height: 18vmax; top: 12%; left: -50vmax; animation: drift1 90s linear infinite; }
+  .cloud-2 { width: 60vmax; height: 22vmax; top: 28%; left: -70vmax; animation: drift2 140s linear infinite; animation-delay: -30s; }
+  .cloud-3 { width: 38vmax; height: 15vmax; top: 42%; left: -45vmax; animation: drift3 110s linear infinite; animation-delay: -60s; }
+  .cloud-4 { width: 55vmax; height: 20vmax; top: 55%; left: -65vmax; animation: drift1 160s linear infinite; animation-delay: -90s; }
+  @keyframes drift1 {
+    0%   { transform: translateX(0) translateY(0); }
+    100% { transform: translateX(calc(100vw + 60vmax)) translateY(-3vmax); }
+  }
+  @keyframes drift2 {
+    0%   { transform: translateX(0) translateY(0); }
+    100% { transform: translateX(calc(100vw + 80vmax)) translateY(2vmax); }
+  }
+  @keyframes drift3 {
+    0%   { transform: translateX(0) translateY(0); }
+    100% { transform: translateX(calc(100vw + 50vmax)) translateY(-2vmax); }
+  }
+
+  .bg-rays {
+    position: absolute;
+    left: var(--sun-x, 50%);
+    top: var(--sun-y, 70%);
+    width: 0; height: 0;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    transition: left 3s ease, top 3s ease;
+  }
+  .bg-rays::before {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 180vmax; height: 180vmax;
+    transform: translate(-50%, -50%);
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      var(--ray) 4deg,
+      transparent 10deg,
+      transparent 85deg,
+      var(--ray) 89deg,
+      transparent 95deg,
+      transparent 175deg,
+      var(--ray) 179deg,
+      transparent 185deg,
+      transparent 265deg,
+      var(--ray) 269deg,
+      transparent 275deg,
+      transparent 355deg,
+      var(--ray) 359deg,
+      transparent 360deg
+    );
+    opacity: .4;
+    animation: raysRotate 180s linear infinite;
+    mask-image: radial-gradient(circle at center, #000 0%, transparent 55%);
+    -webkit-mask-image: radial-gradient(circle at center, #000 0%, transparent 55%);
+  }
+  @keyframes raysRotate { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+  .bg-sun {
+    position: absolute;
+    left: var(--sun-x, 50%);
+    top: var(--sun-y, 70%);
+    width: var(--sun-size, 180px);
+    height: var(--sun-size, 180px);
+    margin-left: calc(var(--sun-size, 180px) / -2);
+    margin-top: calc(var(--sun-size, 180px) / -2);
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at center,
+      var(--sun-core, #fff2c2) 0%,
+      var(--sun-mid, #ffb000) 35%,
+      var(--sun-edge, rgba(255,130,30,0)) 70%
+    );
+    box-shadow:
+      0 0 80px 30px var(--sun-glow, rgba(255,176,0,.45)),
+      0 0 220px 90px var(--sun-glow-2, rgba(255,140,30,.20));
+    filter: blur(1px);
+    transition: top 3s ease, left 3s ease, background 3s ease, box-shadow 3s ease, width 3s ease, height 3s ease, margin 3s ease;
+    animation: sunBreath 6s ease-in-out infinite;
+    z-index: 3;
+  }
+  @keyframes sunBreath {
+    0%,100% { transform: scale(1); opacity: .95; }
+    50%     { transform: scale(1.06); opacity: 1; }
+  }
+
+  .bg-grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: .08;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  .bg-vignette {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 100%, rgba(0,0,0,.45), transparent 70%),
+      radial-gradient(ellipse at 50% 0%, rgba(0,0,0,.25), transparent 60%);
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  /* ============================================================
+     Сетка
+     ============================================================ */
+  .shell {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top) var(--gutter) env(safe-area-inset-bottom);
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 0 8px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  header .brand {
+    display: flex; align-items: center; gap: 9px;
+    color: var(--fg);
+  }
+  header .brand .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 14px var(--accent-glow);
+    transition: background 1.2s ease, box-shadow 1.2s ease;
+  }
+  .timer {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: color .5s ease;
+  }
+  .timer b { color: var(--fg); font-weight: 600; letter-spacing: .06em; transition: color .5s ease; }
+  .timer.alert, .timer.alert b { color: #ff4d4d; }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(16px, 3vw, 32px) 0;
+    gap: clamp(20px, 3vw, 32px);
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-shadow: 0 1px 8px rgba(0,0,0,.6);
+  }
+  .meta .num { color: var(--accent); font-weight: 600; transition: color 1.2s ease; }
+  .meta .sep { width: 1px; height: 10px; background: var(--line); align-self: center; }
+
+  .quote-wrap { position: relative; }
+  .big-num {
+    position: absolute;
+    top: 50%; right: -1vw;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-weight: 800;
+    font-size: clamp(120px, 30vw, 340px);
+    line-height: .8;
+    letter-spacing: -.07em;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.07);
+    user-select: none;
+    pointer-events: none;
+    z-index: 0;
+    white-space: nowrap;
+    text-shadow: 0 0 60px rgba(0,0,0,.4);
+  }
+  blockquote {
+    position: relative;
+    z-index: 1;
+    font-size: clamp(28px, 6.6vw, 66px);
+    line-height: 1.04;
+    font-weight: 650;
+    letter-spacing: -.03em;
+    text-wrap: balance;
+    hanging-punctuation: first last;
+    max-width: 20ch;
+    text-shadow: 0 2px 30px rgba(0,0,0,.55), 0 1px 6px rgba(0,0,0,.5);
+  }
+  blockquote::before {
+    content: '';
+    display: block;
+    width: 52px; height: 3px;
+    background: var(--accent);
+    margin-bottom: 24px;
+    border-radius: 2px;
+    transition: background 1.2s ease;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(12px);
+    animation: wordIn .5s cubic-bezier(.2,.7,.2,1) forwards;
+  }
+  @keyframes wordIn { to { opacity: 1; transform: translateY(0); } }
+
+  .panel {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 700px) {
+    .panel { grid-template-columns: 1fr 1fr; }
+    .panel .wide { grid-column: span 2; }
+  }
+
+  .card {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(10,10,12,.55);
+    padding: 16px 18px;
+    backdrop-filter: blur(16px) saturate(1.1);
+    -webkit-backdrop-filter: blur(16px) saturate(1.1);
+    transition: border-color .3s ease, background .3s ease, transform .3s ease, box-shadow .3s ease;
+    opacity: 0;
+    transform: translateY(14px);
+    animation: cardIn .55s cubic-bezier(.2,.7,.2,1) forwards;
+  }
+  .card:hover {
+    border-color: rgba(255,255,255,.16);
+    background: rgba(15,15,18,.65);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.4);
+  }
+  @keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
+  .card:nth-child(1) { animation-delay: .45s; }
+  .card:nth-child(2) { animation-delay: .52s; }
+  .card:nth-child(3) { animation-delay: .59s; }
+
+  .card-head {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-head .mark {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+    transition: background 1.2s ease;
+  }
+
+  .weather-main { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .weather-temp { font-size: 40px; font-weight: 650; letter-spacing: -.03em; line-height: 1; color: var(--fg); }
+  .weather-detail { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+  .weather-advice { margin-top: 10px; font-size: 13px; line-height: 1.4; color: var(--fg); opacity: .85; }
+
+  .streak-big { display: flex; align-items: baseline; gap: 10px; font-size: 40px; font-weight: 650; letter-spacing: -.03em; line-height: 1; color: var(--fg); }
+  .streak-big small { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .08em; font-weight: 400; }
+  .streak-big.zero { color: var(--muted); }
+  .streak-hint { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+  .tracker-form { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tracker-form input {
+    flex: 1; min-width: 0;
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--fg);
+    background: rgba(0,0,0,.45);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .tracker-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .tracker-form button {
+    font-family: var(--font);
+    font-size: 14px; font-weight: 600;
+    color: #140800;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    padding: 11px 18px;
+    cursor: pointer;
+    transition: transform .08s ease, box-shadow .2s ease, background 1.2s ease;
+    box-shadow: 0 6px 24px var(--accent-glow);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tracker-form button:hover { transform: translateY(-1px); }
+  .tracker-form button:active { transform: translateY(0); }
+
+  .tracker-stats {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 10px; letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .tracker-stats b { color: var(--accent); font-weight: 600; transition: color 1.2s ease; }
+
+  .tracker-chart { display: flex; align-items: flex-end; gap: 3px; height: 52px; }
+  .tracker-chart .bar {
+    flex: 1;
+    background: rgba(255,255,255,.06);
+    border-radius: 2px;
+    min-height: 2px;
+    transition: background .3s ease, height .45s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease;
+    position: relative;
+  }
+  .tracker-chart .bar.has { background: var(--accent); opacity: .55; }
+  .tracker-chart .bar.today { background: var(--accent); opacity: 1; box-shadow: 0 0 12px var(--accent-glow); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  button { font-family: var(--font); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+  .run-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    color: #140800;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: none;
+    border-radius: 12px;
+    padding: 16px 26px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px var(--accent-glow);
+    transition: transform .1s ease, box-shadow .3s ease, background 1.2s ease;
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+  .run-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.5) 50%, transparent 70%);
+    transform: translateX(-100%);
+    animation: shine 3.5s ease-in-out infinite;
+  }
+  @keyframes shine {
+    0%, 60% { transform: translateX(-100%); }
+    100%    { transform: translateX(100%); }
+  }
+  @keyframes pulseGlow {
+    0%,100% { box-shadow: 0 10px 40px var(--accent-glow), 0 0 0 0 var(--accent-soft); }
+    50%     { box-shadow: 0 10px 44px var(--accent-glow), 0 0 0 8px transparent; }
+  }
+  .run-btn:hover { transform: translateY(-2px); }
+  .run-btn:active { transform: translateY(0); }
+  .run-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .run-btn .k { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; opacity: .6; }
+  .run-btn.done {
+    background: transparent;
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent), 0 6px 24px var(--accent-soft);
+    animation: none;
+  }
+  .run-btn.done::after { display: none; }
+  .run-btn.done:hover { background: var(--accent-soft); }
+
+  button.ghost {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--fg);
+    background: rgba(10,10,12,.5);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 16px;
+    transition: border-color .2s ease, color .2s ease, background .2s ease, transform .1s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  button.ghost:hover { border-color: rgba(255,255,255,.2); background: rgba(20,20,24,.65); }
+  button.ghost:active { transform: translateY(1px); }
+  button.ghost:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.ghost[disabled] { opacity: .35; cursor: not-allowed; }
+
+  .status {
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--muted);
+    max-width: 64ch;
+    margin-top: 6px;
+    text-shadow: 0 1px 6px rgba(0,0,0,.6);
+  }
+  .status.ok { color: var(--accent); transition: color 1.2s ease; }
+  .status.warn { color: #e0a13a; }
+
+  .counter-block {
+    margin-top: 4px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(10,10,12,.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    position: relative;
+    overflow: hidden;
+    transition: border-color .3s ease, background .3s ease;
+    opacity: 0;
+    transform: translateY(14px);
+    animation: cardIn .55s cubic-bezier(.2,.7,.2,1) .35s forwards;
+  }
+  .counter-block::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: .5;
+    transition: background 1.2s ease;
+  }
+  .counter-block:hover { border-color: rgba(255,255,255,.16); background: rgba(15,15,18,.65); }
+
+  .counter-line { font-size: 15px; font-weight: 550; line-height: 1.4; color: var(--fg); letter-spacing: -.005em; }
+  .counter-line b {
+    color: var(--accent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition: color 1.2s ease;
+  }
+  .counter-line .bump { display: inline-block; animation: bumpNum .5s cubic-bezier(.2,1.4,.3,1); }
+  @keyframes bumpNum {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.25); color: var(--accent); }
+    100% { transform: scale(1); }
+  }
+  .counter-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .06em;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.5;
+    text-transform: uppercase;
+  }
+  .counter-sub.warn { color: #e0a13a; }
+  .counter-sub.ok { color: var(--accent); transition: color 1.2s ease; }
+
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 0 22px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.35);
+    margin-top: auto;
+    border-top: 1px solid var(--line);
+    text-shadow: 0 1px 6px rgba(0,0,0,.6);
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 24px);
+    background: var(--accent);
+    color: #140800;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 12px 20px;
+    border-radius: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s, transform .25s;
+    z-index: 10;
+    box-shadow: 0 12px 36px var(--accent-glow);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 640px) {
+    header { padding-top: 16px; font-size: 10px; }
+    .big-num { font-size: 44vw; right: -8px; opacity: .55; }
+    blockquote { max-width: 100%; }
+    blockquote::before { margin-bottom: 20px; width: 36px; }
+    .run-btn { width: 100%; justify-content: space-between; font-size: 15px; }
+    .actions button.ghost { flex: 1 1 calc(50% - 5px); justify-content: center; }
+    footer { flex-direction: column; align-items: flex-start; gap: 6px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .word, .card, .run-btn, .bg-sun, .bg-rays::before, .run-btn::after, .counter-block,
+    .cloud, .bg-sky, .bg-stars {
+      animation: none !important;
+    }
+    .word, .card, .counter-block { opacity: 1; transform: none; }
+    .toast { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true">
+  <div class="bg-sky"></div>
+  <div class="bg-stars" id="bg-stars"></div>
+  <div class="bg-clouds">
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+    <div class="cloud cloud-4"></div>
+  </div>
+  <div class="bg-rays"></div>
+  <div class="bg-sun"></div>
+  <div class="bg-grain"></div>
+  <div class="bg-vignette"></div>
+</div>
+
+<div class="shell">
+  <header>
+    <span class="brand"><span class="dot"></span> Утренний бег</span>
+    <span class="timer" id="timer">—</span>
+  </header>
+
+  <main>
+    <div class="meta">
+      <span>Цитата <span class="num" id="quote-num">—</span> / <span id="quote-total">—</span></span>
+      <span class="sep"></span>
+      <span id="today-label">—</span>
+    </div>
+
+    <div class="quote-wrap">
+      <div class="big-num" id="big-num" aria-hidden="true">—</div>
+      <blockquote id="quote-text">—</blockquote>
+    </div>
+
+    <div class="actions">
+      <button class="run-btn" id="run-btn" type="button">
+        Я вышел <span class="k">go</span>
+      </button>
+      <button class="ghost" id="share-btn" type="button">Поделиться</button>
+      <button class="ghost" id="copy-btn" type="button">Скопировать</button>
+      <button class="ghost" id="notify-btn" type="button">Напоминание в 6:00</button>
+      <button class="ghost" id="notify-off-btn" type="button" hidden>Выключить</button>
+    </div>
+
+    <div class="counter-block" id="counter-block">
+      <div class="counter-line" id="counter-line">Загружаем счётчик…</div>
+      <div class="counter-sub" id="counter-sub">Ты не один. Выходи.</div>
+    </div>
+
+    <p id="notify-status" class="status"></p>
+
+    <div class="panel">
+      <div class="card">
+        <div class="card-head"><span class="mark"></span> Серия</div>
+        <div class="streak-big" id="streak-big">
+          <span id="streak-num">0</span><small id="streak-word">дней подряд</small>
+        </div>
+        <div class="streak-hint" id="streak-hint">Первый день — самый важный.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="mark"></span> Погода в 6:00</div>
+        <div class="weather-main">
+          <div class="weather-temp" id="weather-temp">—°</div>
+          <div class="weather-detail" id="weather-detail">определяем…</div>
+        </div>
+        <div class="weather-advice" id="weather-advice"></div>
+      </div>
+
+      <div class="card wide">
+        <div class="card-head"><span class="mark"></span> Километры</div>
+        <form class="tracker-form" id="tracker-form" autocomplete="off">
+          <input type="text" inputmode="decimal" placeholder="сколько км пробежал" id="tracker-input" aria-label="Километры сегодня">
+          <button type="submit">+</button>
+        </form>
+        <div class="tracker-stats">
+          <span>сегодня: <b id="stat-today">0</b> км</span>
+          <span>неделя: <b id="stat-week">0</b> км</span>
+          <span>месяц: <b id="stat-month">0</b> км</span>
+          <span>рекорд: <b id="stat-record">0</b> км</span>
+        </div>
+        <div class="tracker-chart" id="tracker-chart" aria-hidden="true"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <span>Беги, пока город спит</span>
+    <span>morning-run</span>
+  </footer>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =========================================================
+   1. ЦИТАТЫ
+   ========================================================= */
+const quotes = [
+"Дисциплина — это выбор между тем, что хочется сейчас, и тем, что хочешь больше всего.",
+"Утро принадлежит тому, кто встал раньше будильника.",
+"Тело просит отдыха ровно до той секунды, пока ты не выйдешь за дверь.",
+"Привычка сильнее мотивации: мотивация гаснет, привычка остаётся.",
+"Каждый километр — это голос, который ты отнял у своей лени.",
+"Не жди настроения. Настроение приходит после первого шага.",
+"Сила воли — мышца. Сегодня — подход.",
+"Тот, кто бежит утром, весь день догоняет только себя вчерашнего.",
+"Сложно только первые десять минут. Потом сложно остановиться.",
+"Ты не обязан быть быстрым. Ты обязан быть здесь.",
+"Погода — это не причина. Погода — это декорация.",
+"Сон до обеда — самый дорогой способ потратить день.",
+"Всё, что мешает выйти, живёт только в твоей голове. Ноги не спорят.",
+"Легко быть дисциплинированным, когда легко. Покажи себя в дождь.",
+"Одно утро не изменит жизнь. Тысяча утр — изменит.",
+"Каждый раз, когда ты выбираешь кроссовки, ты выбираешь, кем стать.",
+"Дорога не спрашивает, выспался ли ты.",
+"Бег не решает проблемы. Он даёт голову, которой их можно решить.",
+"Лучший день для пробежки был вчера. Следующий лучший — сегодня.",
+"Ты становишься тем, что делаешь повторно.",
+"Пять минут позора на улице лучше дня сожаления дома.",
+"Сначала ты бежишь за формой, потом форма бежит за тобой.",
+"Не останавливайся, когда устал. Остановись, когда закончил.",
+"Утро не обязано быть добрым. Оно обязано быть использованным.",
+"Твоё тело — единственное место, где тебе жить. Начни с уборки.",
+"Мысль «ещё пять минут» убила больше рекордов, чем травмы.",
+"Ветер в лицо — это просто ещё одно сопротивление, которое можно преодолеть.",
+"Ты не проиграл, если вышел. Ты проиграл, если не вышел.",
+"Медленный бег лучше быстрой лежащей жизни.",
+"Тот, кто делает, ошибается меньше, чем тот, кто планирует.",
+"Вставай. Мир не станет ждать, пока ты досмотришь сон.",
+"Характер — это то, что ты делаешь, когда никто не смотрит и все спят.",
+"Ты не найдёшь мотивацию на дне будильника. Только на улице.",
+"Каждый шаг — голос за человека, которым ты хочешь быть.",
+"Дождь не выбирает, кого намочить. Бегун не выбирает, кого тренировать.",
+"Первый километр — для головы. Остальные — для тела.",
+"Легче сдаться утром, чем весь день жалеть об этом.",
+"Дисциплина — это свобода, которую ты выбираешь заранее.",
+"Не ищи время. Отними его у сна.",
+"Утро — единственное время суток, которое никто не отнимет, если ты его занял.",
+"Кроссовки у двери — лучший будильник.",
+"Ты не устал. Ты ещё не начал.",
+"Каждое утро — это шанс снова стать тем, кем не стал вчера.",
+"Страшно не то, что ты устанешь. Страшно то, что ты привыкнешь не бегать.",
+"Твои ноги умеют больше, чем думает твоя голова.",
+"Лень — это просто привычка, которую можно заменить.",
+"Не спорь с будильником. Он прав.",
+"День, начатый бегом, уже не может быть плохим целиком.",
+"Дорога измеряется не километрами, а решениями.",
+"Отговорки весят больше любого рюкзака.",
+"Если тяжело — значит, идёт работа.",
+"Не беги от слабости. Беги к силе.",
+"Слабость говорит громко, но уходит первой.",
+"Ты сильнее, чем тебе удобно думать.",
+"Пока другие досматривают сны, ты просыпаешься.",
+"Тренировка, которую ты пропустил, не украдёт твой рекорд. Привычка пропускать — украдёт.",
+"Один раз проще, чем никогда.",
+"Тело — это инструмент. Заточенный инструмент работает.",
+"Самые честные мысли приходят на третьем километре.",
+"Бег — это разговор с собой без посредников.",
+"Свежий воздух не лечит лень. Он её обнажает.",
+"Быстро — не главное. Регулярно — главное.",
+"Ты не сдался сегодня — ты выиграл завтра.",
+"Утренний свет — бесплатный допинг.",
+"Привычка делать — сильнее настроения не делать.",
+"Каждый раз, когда ты встаёшь, ты голосуешь за свою жизнь.",
+"Ошибка — не устать. Ошибка — не выйти.",
+"Холодно только первую минуту. Потом ты сам согреваешь мир.",
+"Не грузи себя планом на год. Выйди завтра.",
+"Ты удивишься, как много можно сделать, просто перестав искать причины.",
+"Пока ты думаешь, кто-то уже бежит.",
+"Сон сладок, но победа слаще.",
+"Побеждает не самый быстрый. Побеждает тот, кто выходит.",
+"Есть только одно оправдание для пропуска: ты уже бежал сегодня.",
+"Ноги помнят каждую твою слабость.",
+"Выходи. Всё остальное — детали.",
+"Разум сдаётся за километр до тела. Знай это.",
+"Первый шаг — самый тяжёлый. И самый важный.",
+"Ты не вернёшь это утро. Используй его.",
+"Бег — это привычка, которая делает остальные привычки проще.",
+"Слабость утром — это просто страх, который ещё не прогрелся.",
+"Утренняя пробежка — это способ украсть у дня лишний час.",
+"Дождь смывает сомнения.",
+"Смотри вперёд. Дорога сама покажет, куда бежать.",
+"Не важно, как медленно ты бежишь. Важно, что ты не стоишь.",
+"Тот, кто бежит утром, весь день знает, зачем встал.",
+"Дисциплина — это уважение к себе будущему.",
+"Начни с того, что перестанешь торговаться с будильником.",
+"Один километр сегодня — это уверенность завтра.",
+"Хочешь изменить жизнь — начни с того, что изменишь утро.",
+"Ты не рождён бегуном. Ты становишься им каждое утро.",
+"Проще выйти, чем объяснить, почему не вышел.",
+"Твоя лень боится только одного — первого шага.",
+"Бег не про скорость. Бег про решение.",
+"Каждая пробежка — это маленькая победа над собой.",
+"Отговорки не бегут марафон.",
+"Утренний бег — это инвестиция, которая всегда в плюсе.",
+"Усталость проходит. Сожаление — нет.",
+"Сначала дисциплина, потом вдохновение, потом результат.",
+"Бежишь — значит, живёшь по своим правилам.",
+"Погода не испортит пробежку. Испортит её отсутствие.",
+"Ты не должен быть лучше всех. Ты должен быть лучше себя вчерашнего.",
+"Самый длинный километр — от кровати до двери.",
+"Не жди понедельника. Ждёт утро.",
+"Дорога лечит голову лучше любой таблетки.",
+"Будь тем, кто выходит, даже когда не хочется.",
+"Характер куётся в моменты, когда ты выбираешь неудобное.",
+"Каждая минута сна после звонка — это взятый у себя кредит.",
+"Ты сильнее усталости. Проверь.",
+"Утро не ждёт героев. Оно ждёт просто вышедших.",
+"Бег закаляет не только тело, но и решения.",
+"Ты не бежишь от проблем. Ты бежишь к ясности.",
+"Первое утро — самое сложное. Второе — уже привычка.",
+"Пока ты сомневаешься, кто-то выбирает кроссовки.",
+"Легко бежать по ровному. Покажи себя в подъём.",
+"Твоя единственная конкуренция — ты вчерашний.",
+"Не ищи лёгких путей. Ищи свои.",
+"Бег — это самая честная форма дисциплины.",
+"Утро — единственное время, когда ты наедине с собой и дорогой.",
+"Ты можешь всё, но не сразу. Начни с одного круга.",
+"Дисциплина — это не насилие. Это забота о себе.",
+"Выход из дома — уже половина пробежки.",
+"Каждое утро — это чистый лист. Беги по нему.",
+"Ноги знают дорогу, если голова не мешает.",
+"Страх устать сильнее самой усталости.",
+"Ты становишься сильнее в тот момент, когда хочется остановиться.",
+"Бег — это привычка, которая возвращает тебя себе.",
+"Смотри на дорогу, а не на часы.",
+"Медленно — это тоже движение вперёд.",
+"Ты не потратишь это утро зря, если выйдешь.",
+"Привычка вставать — сильнее любого допинга.",
+"Каждый шаг — это ответ самому себе.",
+"Ветер в спину — хорошо. Ветер в лицо — тренировка.",
+"Ты не проиграл, если вышел в дождь.",
+"Легко быть сильным на диване. Покажи силу на дороге.",
+"Один километр в день — это 365 километров в год.",
+"Ты не бежишь за рекордом. Ты бежишь за собой.",
+"Дорога не судит. Она только проверяет.",
+"Утренний бег — это способ сказать себе «я справлюсь».",
+"Хочешь ясную голову — отдай её дороге на полчаса.",
+"Слабость — это просто неразогретая сила.",
+"Ты не найдёшь мотивацию в телефоне. Только на улице.",
+"Каждый раз, когда ты выходишь, ты становишься немного другим.",
+"Не жди, пока захочется. Начни, и захочется.",
+"Дисциплина — это когда «надо» становится «хочу».",
+"Бег — это разговор, в котором ты сам себе судья.",
+"Твоё тело — это проект. Работай над ним.",
+"Утро без движения — это день без старта.",
+"Пока ты думаешь, кто-то уже на втором километре.",
+"Каждый шаг — это голос за дисциплину.",
+"Легко сдаться. Легко и не начинать. Покажи третий вариант.",
+"Ты не обязан бежать быстро. Ты обязан не сдаваться.",
+"Первый километр — это всегда борьба. Второй — уже победа.",
+"Сначала ты бежишь за здоровьем. Потом здоровье бежит за тобой.",
+"Не останавливайся у подъёма. Там и растёт характер.",
+"Ты не проиграешь, если выйдешь. Ты проиграешь, если останешься.",
+"Утро — это не время. Это решение.",
+"Слабость уходит, когда ты перестаёшь её кормить.",
+"Бег — это честный способ поговорить с собой.",
+"Каждый раз, когда ты встаёшь, ты выбираешь себя.",
+"Ты сильнее, чем твоя усталость. Проверь на дистанции.",
+"Хочешь результат — перестань искать оправдания.",
+"Дорога не спрашивает про настроение. Она просто есть.",
+"Бег — это привычка, которая делает тебя надёжнее для себя.",
+"Пока ты сомневаешься, кто-то уже бежит.",
+"Утренний бег — это лучший способ начать день с победы.",
+"Ты не найдёшь мотивацию на дне будильника.",
+"Каждый километр — это шаг к себе.",
+"Не жди идеального утра. Выйди в обычное.",
+"Дисциплина — это когда ты выбираешь дорогу, а не диван.",
+"Ты можешь всё. Начни с выхода за дверь.",
+"Легко быть дисциплинированным в хорошую погоду. Покажи себя в дождь.",
+"Каждый шаг — это голос за твою будущую форму.",
+"Ты не проиграл, если вышел. Ты выиграл.",
+"Бег — это способ украсть у дня ясность.",
+"Не ищи мотивацию. Создай её.",
+"Хочешь изменить день — измени утро.",
+"Ты сильнее, чем думаешь. Дорога это докажет.",
+"Каждый раз, когда ты выходишь, ты голосуешь за свою жизнь.",
+"Слабость громко говорит, но быстро сдаётся.",
+"Бег — это привычка, которая возвращает тебе себя.",
+"Ты не бежишь за рекордом. Ты бежишь за собой.",
+"Легко сдаться, когда никто не видит. Покажи, что видишь ты сам.",
+"Утро — это чистый лист. Беги по нему.",
+"Первый шаг самый тяжёлый. Потом легче.",
+"Хочешь свободы — начни с дисциплины.",
+"Ты не проиграешь, если выйдешь. Ты проиграешь, если не выйдешь.",
+"Каждый километр — это твоя победа над собой.",
+"Не жди настроения. Настроение догонит.",
+"Ты сильнее, чем твоя лень. Проверь.",
+"Бег — это честный разговор с собой.",
+"Дисциплина — это свобода, которую ты выбираешь.",
+"Ты становишься тем, что делаешь повторно.",
+"Ты не проиграл, если вышел. Ты выиграл.",
+"Утренний бег — это лучший способ начать день.",
+"Бег — это способ сказать себе «я справлюсь».",
+"Ты не бежишь от слабости. Ты бежишь к силе.",
+"Не ищи время. Отними его у сна.",
+"Каждый километр — это шаг к себе.",
+"Утро — это не время. Это решение.",
+"Хочешь результат — перестань искать оправдания.",
+"Дисциплина — это уважение к себе будущему.",
+"Один километр сегодня — это уверенность завтра.",
+"Ты не рождён бегуном. Ты становишься им каждое утро.",
+"Твоя лень боится только одного — первого шага.",
+"Утренний бег — это инвестиция, которая всегда в плюсе.",
+"Бежишь — значит, живёшь по своим правилам.",
+"Самый длинный километр — от кровати до двери.",
+"Дорога лечит голову лучше любой таблетки.",
+"Характер куётся в моменты, когда ты выбираешь неудобное.",
+"Утро не ждёт героев. Оно ждёт просто вышедших.",
+"Ты не бежишь от проблем. Ты бежишь к ясности.",
+"Легко бежать по ровному. Покажи себя в подъём.",
+"Не ищи лёгких путей. Ищи свои.",
+"Ты можешь всё, но не сразу. Начни с одного круга.",
+"Каждое утро — это чистый лист. Беги по нему.",
+"Ты становишься сильнее в тот момент, когда хочется остановиться.",
+"Медленно — это тоже движение вперёд.",
+"Ветер в спину — хорошо. Ветер в лицо — тренировка.",
+"Один километр в день — это 365 километров в год.",
+"Утренний бег — это способ сказать себе «я справлюсь».",
+
+"Делай сегодня то, за что завтра скажешь себе спасибо.",
+"Успех — это сумма маленьких усилий, повторяемых изо дня в день.",
+"Путь в тысячу ли начинается с первого шага.",
+"Тот, кто хочет, ищет возможности, тот, кто не хочет, ищет причины.",
+"Не бойся идти медленно, бойся стоять на месте.",
+"Лучшее время посадить дерево было двадцать лет назад, второе лучшее — сегодня.",
+"Терпение и труд всё перетрут.",
+"Падают не те, кто слаб, а те, кто не поднимается.",
+"Если тебе трудно — значит, ты идёшь в гору.",
+"Начни там, где стоишь, и используй то, что есть.",
+"Великие дела требуют не силы, а упорства.",
+"Мечты не работают, если не работаешь ты.",
+"Дисциплина — это мост между целью и результатом.",
+"Никогда не поздно стать тем, кем ты мог бы быть.",
+"Тот, кто не рискует, рискует всем.",
+"Сила воли как мышца — чем чаще тренируешь, тем крепче.",
+"Ты не обязан быть великим, чтобы начать, но обязан начать, чтобы стать великим.",
+"Успех любит подготовленных.",
+"Каждый день — новая страница, пиши свою историю.",
+"Не жди идеального момента, бери момент и делай его идеальным.",
+"Страх — это иллюзия, которая исчезает при первом шаге.",
+"Твоё будущее создают действия, которые ты совершаешь сегодня.",
+"Хочешь изменить мир — начни с себя.",
+"Успех — это падать девять раз и десять раз подняться.",
+"Сомневайся в себе один день — и потеряешь год.",
+"Дорогу осилит идущий.",
+"Не сравнивай себя с другими, сравнивай себя с собой вчерашним.",
+"Мысль, подкреплённая действием, сильнее любых слов.",
+"Не жди понедельника, начинай сейчас.",
+"Твой лимит — только тот, который ты сам себе установил.",
+"Победа начинается с решения попробовать.",
+"Упорство превращает невозможное в возможное.",
+"Каждое утро — шанс начать заново.",
+"Работай молча, пусть успех говорит за тебя.",
+"Сложнее всего начать действовать, всё остальное зависит от упорства.",
+"Если ты можешь мечтать об этом, ты можешь это сделать.",
+"Измени свои мысли и ты изменишь свой мир.",
+"Рост начинается там, где заканчивается комфорт.",
+"Самый верный путь к успеху — попробовать ещё раз.",
+"Боль временна, но если сдаться, она будет длиться вечно.",
+"Поверь в себя, и половина работы уже сделана.",
+"Ты сильнее, чем ты думаешь.",
+"Мотивация заставляет начать, привычка заставляет продолжать.",
+"Любой провал — это часть пути к успеху.",
+"Будущее зависит от того, что ты сделаешь сегодня.",
+"Успех — это идти от неудачи к неудаче, не теряя энтузиазма.",
+"Неважно, как медленно ты идёшь, главное — не останавливаться.",
+"Не смотри на часы, делай то, что они делают.",
+"Мечтай о большем, чем другие считают возможным для тебя.",
+"Победа любит терпение.",
+"Чтобы дойти до цели, нужно прежде всего идти.",
+"В смелости — гений, сила и магия.",
+"Не жди, время никогда не будет подходящим.",
+"Тот, кто победил себя, непобедим.",
+"Каждый день делай хоть что-то маленькое для своей мечты.",
+"Иди до конца, даже если путь длинный.",
+"Твоя жизнь — результат твоих решений, а не твоих условий.",
+"Сила в умении начинать снова.",
+"Не бойся падать, бойся не вставать.",
+"Препятствие — это возможность, спрятанная в неудобной форме.",
+"Успех приходит к тем, кто занят его поиском, а не ожиданием.",
+"Твои мысли формируют твою реальность.",
+"Лучший способ предсказать будущее — создать его.",
+"Сделай шаг, и дорога появится под ногами.",
+"Великие достижения — это результат великих привычек.",
+"Каждая неудача — это урок, а не приговор.",
+"Мечта без плана — просто желание.",
+"Твоё отношение определяет твой результат.",
+"Всё, что ты хочешь, находится по другую сторону страха.",
+"Не позволяй вчерашнему забирать силы у сегодняшнего дня.",
+
+"Не жди, когда станет легко, становись сильнее.",
+"Кто хочет — ищет способ, кто не хочет — ищет отговорку.",
+"Цель без действий — мечта, действие без цели — суета.",
+"Начни с малого, но начни сегодня.",
+"Твои привычки завтра определяют твою жизнь сегодня.",
+"Трудности закаляют тех, кто не сдаётся.",
+"Вершина покоряется тому, кто идёт, а не тому, кто смотрит.",
+"Страх неудачи — самый большой тормоз успеха.",
+"Пока другие спят, ты работаешь над своей мечтой.",
+"Путь к цели усыпан ловушками, но идущий их заметит.",
+"Не жалуйся на трудности, радуйся возможностям их преодолеть.",
+"Успех не случайность, а закономерность упорного труда.",
+"Живи так, будто умрёшь завтра, учись так, будто будешь жить вечно.",
+"Тот, кто контролирует утро, контролирует день.",
+"Маленькое действие лучше большого намерения.",
+"Терпение — это сила, которая превращает упорство в результат.",
+"Каждый мастер был когда-то катастрофой.",
+"Не оглядывайся назад, там уже ничего не изменишь.",
+"Побеждает не самый быстрый, а тот, кто не сошёл с дистанции.",
+"Ты получишь не то, чего хочешь, а то, ради чего работаешь.",
+"Внутренняя опора крепче внешней поддержки.",
+"Лучшее вложение — это вложение в себя.",
+"Хочешь расти — выходи из зоны комфорта каждый день.",
+"Судьба благоволит смелым.",
+"Кто не ищет лёгких путей, находит свои.",
+"Не сравнивай своё начало с чужой серединой.",
+"Успех — это привычка, тренируй её как мышцу.",
+"Отдых — часть работы, а не её противник.",
+"Настойчивость важнее таланта.",
+"Пока не попробуешь, не узнаешь, на что способен.",
+"Ошибка — это не падение, а шаг в обучении.",
+"Всё великое когда-то было мечтой.",
+"Начни там, где есть, используй то, что есть, и сделаешь то, что можешь.",
+"Каждый понедельник — новый шанс, но каждый день — тоже.",
+"Дисциплина свободнее, чем безделье.",
+"Твой уровень определяется тем, на что ты способен в трудный момент.",
+"Не подсчитывай дни, пусть дни что-то значат.",
+"Сложный путь ведёт к сильному человеку.",
+"Делай то, что боишься, и страх исчезнет.",
+"Время — единственный ресурс, который нельзя вернуть.",
+"Тот, кто не движется вперёд, движется назад.",
+"Сначала работай над собой, потом над миром.",
+"Успех начинается с мысли о нём.",
+"Секрет успеха — в повторении.",
+"Каждое падение — урок подъёма.",
+"Неважно, сколько раз ты упал, важно, сколько раз поднялся.",
+"Мечты сбываются у тех, кто их превращает в цели.",
+"Счастье — это путь, а не пункт назначения.",
+"Не бойся медленного прогресса, бойся застоя.",
+"Твоя зона комфорта — тюрьма, если в ней слишком долго сидеть.",
+"Работай над собой, пока другие работают над оправданиями.",
+"Сильные люди принимают ответственность, слабые — ищут виноватых.",
+"Ничто не даётся даром, и это хорошо.",
+"Верь в процесс, даже когда не видишь результата.",
+"Проблемы — это замаскированные возможности.",
+"Успех приходит к тому, кто встал на минуту раньше.",
+"Каждый шаг к цели меняет тебя самого.",
+"Тот, кто умеет ждать, получает больше, чем тот, кто умеет хотеть.",
+"Усталость временная, отказ — навсегда.",
+"Лучше горькая правда пути, чем сладкая ложь дивана.",
+"Если план не работает, меняй план, но не цель.",
+"Огромные достижения начинаются с решения попробовать.",
+"Действие — фундамент всех успехов.",
+"Думай о результате, но работай над процессом.",
+"Успех — это не финал, поражение — не катастрофа, важна смелость продолжать.",
+"Не считай дни до конца, делай дни, которые считаются.",
+"Лучше сделать и сожалеть, чем не сделать и жалеть.",
+"Ты не найдёшь время, ты его создашь.",
+
+"Терпение имеет больше силы, чем грубая настойчивость.",
+"Кто хочет двигать мир, пусть сначала двинет себя.",
+"Успех — это когда подготовка встречается с возможностью.",
+"Не откладывай на завтра то, что изменит твою жизнь сегодня.",
+"Сила не в том, чтобы никогда не падать, а в том, чтобы подниматься.",
+"Маленькие победы ведут к большим.",
+"Тот, кто начинает, наполовину уже закончил.",
+"Трудности не должны останавливать, они должны направлять.",
+"Каждый день даёт шанс стать лучше, чем вчера.",
+"Верить в себя — половина победы.",
+"Работа побеждает всё, когда другие ленятся.",
+"Путь наверх начинается с первого шага с постели.",
+"Не жди вдохновения, вдохновение ждёт твоего действия.",
+"Слабый сдаётся после первой ошибки, сильный после сотой пробует снова.",
+"Успех — это не пункт назначения, а способ путешествовать.",
+"Тот, кто ничего не делает, ничего не добьётся.",
+"Не позволяй неудачам стать твоей привычкой.",
+"Дисциплина сегодня — свобода завтра.",
+"Если тебе плохо — иди, движение лечит.",
+"Мечтай смело, действуй тихо, удивляй громко.",
+"Самое лучшее время для перемен — сейчас.",
+"Твоё настроение — твой инструмент, точи его ежедневно.",
+"Большая цель раскладывается на маленькие шаги.",
+"Не бойся ошибаться, бойся не пробовать.",
+"Всё, что тебя не убивает, делает сильнее, но лучше всё-таки учиться.",
+"Победа над собой — самая трудная и самая важная.",
+"Каждый вечер задавай вопрос: что я сделал сегодня для своей мечты.",
+"Иди, даже если вокруг никто не верит.",
+"Терпение — это не ожидание, а действие в правильном ритме.",
+"Успех — это капля за каплей, день за днём.",
+"Не жди разрешения жить свою жизнь.",
+"Тот, кто боится неудачи, уже проиграл.",
+"Время работает на того, кто работает.",
+"Не жалуйся, делай.",
+"Сила воли растёт там, где её тренируют.",
+"Утро задаёт тон всему дню.",
+"Хочешь изменить результат — измени входные данные.",
+"Мир принадлежит тем, кто встал и пошёл.",
+"Каждая книга — это лестница, каждая страница — ступенька.",
+"Знания без действий — груз, знания с действиями — крылья.",
+"Тот, кто осмеливается проиграть, осмеливается победить.",
+"Успех не прощает лени, но награждает упорство.",
+"Начни сейчас — через год поблагодаришь себя.",
+"Не ищи лёгкой жизни, ищи силы для трудной.",
+"Величие рождается из повторения простых действий.",
+"Ты не опоздал, ты как раз вовремя.",
+"Никто не придёт и не сделает это за тебя.",
+"Сомнение убивает больше мечтаний, чем неудача.",
+"Путь к мастерству — это путь скучных повторений.",
+"Не спрашивай, легко ли будет, спрашивай, стоит ли оно того.",
+"Каждый день — это выбор: страдать от перемен или страдать от застоя.",
+"Не жди мотивации, мотивация приходит от действия.",
+"Успех строится ночью, когда все спят.",
+"Позволь себе быть новичком сегодня, чтобы быть мастером завтра.",
+"Тот, кто контролирует своё время, контролирует свою жизнь.",
+"Самое дорогое — время, трать его на важное.",
+"Не бойся темноты, бойся остановиться.",
+"Хочешь ускориться — отпусти прошлое.",
+"Успех начинается с чистого листа каждый день.",
+"Работай над собой в тишине, пусть результаты говорят публично.",
+"Каждое усилие — кирпич в фундаменте будущего.",
+"Маленький шаг сегодня лучше большого плана на никогда.",
+"Упорство — это талант номер один.",
+"Не трать энергию на беспокойство, трать её на действие.",
+"Страх уходит там, где начинается знание.",
+"Если не сейчас, то когда.",
+"Лучшее время — сейчас, лучший человек — ты.",
+"Тот, кто терпел, тот и победил.",
+"Слабые оправдания, сильные результаты.",
+"Не жди, что путь будет лёгким, жди, что он будет твоим.",
+"Каждое утро — это приглашение к новой жизни.",
+"Скажи себе правду, затем сделай шаг.",
+"Успех любит тех, кто не сдаётся после первой неудачи.",
+
+"Не жди подходящего момента, сделай этот момент подходящим.",
+"Тот, кто движется, ощущает ветер, тот, кто стоит, чувствует только холод.",
+"Твоё будущее начинается с того, что ты делаешь сегодня вечером.",
+"Успех — это сумма усилий, скрытых от чужих глаз.",
+"Кто не боится трудностей, тому они по плечу.",
+"Порядок в мыслях начинается с порядка в действиях.",
+"Каждый день делай чуть больше, чем должен.",
+"Тот, кто не ставит целей, работает на чужие.",
+"Сложность пути пропорциональна цене результата.",
+"Не жди удачи, удача ждёт подготовленных.",
+"Действие убивает сомнение лучше любых слов.",
+"Тот, кто встал сегодня на шаг раньше, завтра окажется на шаг впереди.",
+"Внутренний голос важнее внешнего шума.",
+"Каждая победа начинается с решения не сдаваться.",
+"Путь к вершине начинается с подъёма с дивана.",
+"Не бойся быть медленным, бойся быть остановившимся.",
+"Тот, кто живёт прошлым, теряет настоящее.",
+"Сила привычки сильнее силы желания.",
+"Успех — это когда ты сам себе нравишься.",
+"Работай над собой молча, а результаты покажут сами.",
+"Сомнение в себе — самая тяжёлая ноша, сбрось её.",
+"Каждая дверь открывается ключом действия.",
+"Не жди чуда, создавай его сам.",
+"Тот, кто упорно идёт, обгоняет того, кто быстро начал и остановился.",
+"Мечта сбывается у того, кто работает над ней в дни, когда никто не заставляет.",
+"Терпеливый получает то, что нетерпеливый теряет.",
+"Успех начинается с первого неудобного разговора.",
+"Не жди, что жизнь станет проще, стань сильнее.",
+"Сделанное сегодня важнее запланированного на завтра.",
+"Тот, кто боится ошибиться, не двигается с места.",
+"Внутренняя дисциплина сильнее внешней мотивации.",
+"Каждое утро — возможность переписать своё начало.",
+"Тот, кто контролирует свои мысли, контролирует свою жизнь.",
+"Успех строится из дней, когда не хотелось ничего делать, но ты сделал.",
+"Иди, даже если идёшь один.",
+"Тот, кто не сдаётся после сотой попытки, рано или поздно победит.",
+"Не жди идеальных условий, их не будет никогда.",
+"Начни с того, что можешь сделать прямо сейчас.",
+"Тот, кто ставит цели, живёт осмысленно.",
+"Каждый день без действий — это день, потраченный на чужую жизнь.",
+"Успех — это привычка, которая формируется ежедневно.",
+"Тот, кто встал после падения, сильнее того, кто не падал.",
+"Сложности отделяют тех, кто хочет, от тех, кто добивается.",
+"Не жди вдохновения, создавай его трудом.",
+"Тот, кто умеет начинать заново, никогда не проигрывает.",
+"Путь к цели — это марафон, а не спринт.",
+"Тот, кто работает над собой, растёт даже когда не замечает.",
+"Успех любит тех, кто встаёт пораньше.",
+"Не жди, что кто-то сделает за тебя, это твоя жизнь.",
+"Каждая маленькая победа — это ступень к большой.",
+"Тот, кто не боится начинать с нуля, никогда не потеряет всё.",
+"Терпение — это умение ждать, не переставая работать.",
+"Не жди, что станет легче, стань выносливее.",
+"Успех приходит к тому, кто продолжает, когда другие остановились.",
+"Тот, кто контролирует свои эмоции, контролирует ситуацию.",
+"Каждый день — это возможность стать версией себя, о которой мечтаешь.",
+"Тот, кто не рискует, живёт чужой жизнью.",
+"Сильные решения принимаются в тишине, а не в шуме.",
+"Не жди признания, работай, пока другие ждут аплодисментов.",
+"Успех — это когда предыдущая победа толкает к следующей цели.",
+"Тот, кто начал вчера, уже впереди того, кто начнёт завтра.",
+"Терпение к себе — это топливо для длинного пути.",
+"Не жди мотивации, действуй, и она придёт.",
+"Успех — это когда трудности становятся ступенями, а не стенами.",
+"Тот, кто умеет проигрывать, умеет побеждать.",
+"Каждое усилие сегодня — это комфорт завтра.",
+"Не жди внешних перемен, начни с внутренних.",
+"Тот, кто работает над своей мечтой по ночам, живёт ею днём.",
+"Сила в том, чтобы продолжать, когда всё говорит «хватит».",
+"Не жди, что мир изменится под тебя, адаптируйся и двигайся.",
+"Успех — это результат правильных решений, принятых в трудные моменты.",
+"Тот, кто не боится быть непонятым, идёт к своей цели.",
+"Каждый день спрашивай себя: это приближает меня к цели или отдаляет.",
+"Не жди, что кто-то поверит в тебя, поверни в себя сам.",
+"Тот, кто встал сегодня раньше, успел больше до заката.",
+"Сила — это не отсутствие страха, а действие вопреки ему.",
+"Не жди, что придёт вдохновение, труд — вот где оно рождается.",
+"Успех — это когда подготовленные встречают свой момент.",
+"Тот, кто не сдаётся на девяносто девятом шаге, дойдёт до сотого.",
+"Каждая попытка — это шаг вперёд, даже если кажется неудачей.",
+"Не жди лёгкого пути, выбирай достойный.",
+"Тот, кто контролирует своё утро, управляет своим днём.",
+"Сила духа крепнет там, где тело хочет сдаться.",
+"Не жди идеального старта, стартуй с того, что есть.",
+"Успех — это привычка делать больше, чем от тебя ждут.",
+"Тот, кто знает, куда идёт, не боится длинной дороги.",
+"Каждый день — это новая возможность доказать себе, на что ты способен.",
+"Не жди, что станет легче, целься выше.",
+"Тот, кто работал ночью, утром получает результаты.",
+"Сила в постоянстве, а не в интенсивности.",
+"Не жди, что найдётся время, найди его сам.",
+"Успех — это когда мечта превращается в план, а план в действие.",
+"Тот, кто не боится начать заново, никогда не будет на нуле.",
+"Каждое утро — это чистый лист, наполни его смыслом.",
+"Не жди, что кто-то разбудит твою мечту, буди её сам.",
+"Тот, кто контролирует свои привычки, контролирует свою судьбу.",
+"Сила воли — это выбор между мгновенным удовольствием и долгосрочной целью.",
+"Не жди, что путь покажут, протаптывай его сам.",
+"Успех — это когда каждая неудача делает тебя умнее, а не тише.",
+"Тот, кто идёт медленно, но постоянно, обгоняет тех, кто бегал рывками.",
+"Каждый день добавляй по кирпичику в здание своей мечты.",
+"Не жди, что станет легко, стань тем, кому легко.",
+"Тот, кто не останавливается на достигнутом, никогда не останавливается вообще.",
+"Сила в том, чтобы начинать, когда никто не верит.",
+"Не жди признания, признание придёт к тому, кто работает, а не ждёт.",
+"Успех — это сумма отложенных удовольствий.",
+"Тот, кто встал на десять минут раньше, живёт на час дольше каждый день.",
+"Каждый день — это экзамен, который ты сдаёшь сам себе.",
+"Не жди, что придёт лёгкость, трудись, и она станет привычной.",
+"Тот, кто контролирует свои мысли утром, управляет своим вечером.",
+"Сила воли — это когда хочется сдаться, но ты делаешь ещё один подход.",
+"Не жди, что тебе повезёт, готовься, чтобы удача нашла тебя.",
+"Тот, кто не боится работы, не боится неудач.",
+"Каждый день — это возможность стать лучше на один процент.",
+"Не жди, что путь будет прямым, извилины делают путь интереснее.",
+"Тот, кто работает в тишине, слышит свои мысли громче.",
+"Сила — это продолжать, когда никто не смотрит.",
+"Не жди, что всё сложится само, складывай сам.",
+"Тот, кто верит в себя, не нуждается в чужом одобрении.",
+"Каждый день — это новый раунд, выходи на ринг.",
+"Не жди, что кто-то подскажет, спрашивай сам, ошибайся сам, учись сам.",
+"Тот, кто контролирует своё время, контролирует свою жизнь.",
+"Сила духа — это когда тело говорит «нет», а воля говорит «иду».",
+"Не жди, что мотивация придёт извне, она рождается внутри.",
+"Успех — это когда страх становится топливом, а не тормозом.",
+"Тот, кто не боится темноты, видит звёзды.",
+"Каждый день — это возможность перевернуть страницу.",
+"Не жди, что придёт удача, создавай условия для неё.",
+"Тот, кто работает над собой, никогда не стареет.",
+"Сила — это когда устал, но сделал ещё один шаг.",
+"Не жди, что путь будет коротким, сделай каждый шаг значимым.",
+"Успех — это когда малые действия складываются в большие результаты.",
+"Тот, кто не сдаётся после падения, уже победил того, кто не вставал.",
+"Каждый день — это возможность начать историю, которую ты будешь гордо рассказывать.",
+"Не жди, что станет просто, становись тем, кому просто.",
+"Тот, кто контролирует свои эмоции, владеет ситуацией.",
+"Сила — это не в мышцах, а в решимости.",
+"Не жди, что кто-то сделает первый шаг, сделай его сам.",
+"Успех — это когда каждая неудача становится уроком, а не поводом сдаться.",
+"Тот, кто не боится ошибаться, не боится расти.",
+"Каждый день — это возможность выбрать свой путь заново.",
+"Не жди, что жизнь упростится, упростись сам.",
+"Тот, кто контролирует свои желания, контролирует свою судьбу.",
+"Сила — это когда боишься, но всё равно идёшь.",
+"Не жди, что придёт время, время уже пришло.",
+"Успех — это когда трудолюбие становится стилем жизни, а не подвигом.",
+"Тот, кто не боится начинать, никогда не заканчивает на нуле.",
+"Каждый день — это возможность превратить мечту в план.",
+"Не жди, что путь будет простым, простые пути ведут в никуда.",
+"Тот, кто контролирует свои мысли, контролирует свои действия.",
+"Сила — это когда хочешь остановиться, но делаешь ещё один шаг.",
+"Не жди, что кто-то заметит твой труд, трудись, и заметят.",
+"Успех — это когда каждое утро начинается с цели, а не с будильника.",
+"Тот, кто не боится быть собой, никогда не потеряет себя.",
+"Каждый день — это возможность стать тем, кем ты мечтал быть.",
+"Не жди, что станет легко, делай, пока не станет.",
+"Тот, кто контролирует своё настоящее, управляет своим будущим.",
+"Сила — это когда усталость не становится отговоркой.",
+"Не жди, что придёт вдохновение, вдохновение приходит к тем, кто работает.",
+"Успех — это когда каждый день приближает тебя к мечте, а не отдаляет.",
+"Тот, кто не боится труда, не боится неудач.",
+"Каждый день — это возможность написать свою историю.",
+"Не жди, что путь будет гладким, гладкие пути не закаляют.",
+"Тот, кто контролирует свои привычки, творит свою судьбу.",
+"Сила — это когда боишься высоты, но всё равно поднимаешься.",
+"Не жди, что кто-то оценит тебя раньше, чем ты оценишь себя.",
+"Успех — это когда стремление сильнее усталости.",
+"Тот, кто не боится меняться, никогда не отстанет от времени.",
+"Каждый день — это возможность доказать, что ты не зря проснулся.",
+"Не жди, что станет проще, стань сильнее.",
+"Тот, кто контролирует свои решения, контролирует свою жизнь.",
+"Сила — это когда падал, но снова встал.",
+"Не жди, что придёт лёгкость, лёгкость приходит к тренированным.",
+"Успех — это когда цель яснее, чем препятствия.",
+"Тот, кто не боится быть первым, не будет последним.",
+"Каждый день — это возможность выбрать рост, а не стагнацию.",
+"Не жди, что путь осветят, неси свой свет сам.",
+"Тот, кто контролирует свои слова, контролирует свои отношения.",
+"Сила — это когда слабость просит отдыха, а воля просит действия.",
+"Не жди, что кто-то вдохновит, вдохнови сам себя.",
+"Успех — это когда каждый отказ приближает к согласию.",
+"Тот, кто не боится темноты, дойдёт до рассвета.",
+"Каждый день — это возможность научиться чему-то новому.",
+"Не жди, что жизнь станет проще, стань гибче.",
+"Тот, кто контролирует своё внимание, контролирует свой результат.",
+"Сила — это когда руки опускаются, а сердце поднимает их.",
+"Не жди, что придёт удача, удача любит тех, кто работает.",
+"Успех — это когда страсть сильнее страха.",
+"Тот, кто не боится высоты, увидит больше.",
+"Каждый день — это возможность построить то, о чём мечтал ночью.",
+"Не жди, что станет легче, станет иначе.",
+"Тот, кто контролирует свои приоритеты, контролирует свою жизнь.",
+"Сила — это когда хочешь сдаться, но вспоминаешь, зачем начал.",
+"Не жди, что кто-то откроет дверь, стучи сильнее.",
+"Успех — это когда усердие становится привычкой, а привычка — характером.",
+"Тот, кто не боится ошибок, не боится роста.",
+"Каждый день — это возможность стать лучше, чем был вчера.",
+"Не жди, что путь будет лёгким, лёгкие пути не ведут к вершинам.",
+"Тот, кто контролирует свои мысли, контролирует свои эмоции.",
+"Сила — это когда усталость не останавливает, а учит распределять силы.",
+"Не жди, что придёт подходящий момент, момент создаётся действием.",
+"Успех — это когда дисциплина сильнее настроения.",
+"Тот, кто не боится начинать заново, теряет только прошлое, а не будущее.",
+"Каждый день — это возможность изменить направление.",
+"Не жди, что станет просто, просто начинай.",
+"Тот, кто контролирует свои действия, контролирует свои результаты.",
+"Сила — это когда страх есть, а шаг всё равно сделан.",
+"Не жди, что кто-то сделает за тебя, твоя жизнь — твоя ответственность.",
+"Успех — это когда каждое утро ты выбираешь рост, а не комфорт.",
+"Тот, кто не боится быть непохожим, становится незабываемым.",
+"Каждый день — это возможность вложить в себя, а не в отговорки.",
+
+"Каждое дело, отложенное на завтра, ворует твоё сегодня.",
+"Кто ждёт попутного ветра, тот не поднимет паруса.",
+"Сначала ты работаешь ради мечты, потом мечта работает на тебя.",
+"Усталость от усилий проходит, сожаление об упущенном остаётся.",
+"Кто не ставит планку, тот не прыгает.",
+"Каждое утро — это дебют, каждый вечер — итог, играй свою партию.",
+"Ничто не укрепляет веру в себя, как сделанное своими руками.",
+"Маленькие победы не дают сокрушиться большим поражениям.",
+"Путь вниз лёгкий, поэтому внизу так много людей.",
+"Ты либо находишь способ, либо находишь отговорку.",
+"Каждый день, потраченный на сомнения, — это день, украденный у действия.",
+"Упорство превращает неудачника в финалиста.",
+"Свои правила выигрывают у чужих разрешений.",
+"Ты не сможешь вернуться назад и начать заново, но сможешь начать сейчас и сделать иначе.",
+"Величие не в том, чтобы не падать, а в том, чтобы вставать каждый раз.",
+"Каждая трудность — это экзамен, который ты сдаёшь перед самим собой.",
+"Час работы вечером решает больше, чем три часа раздумий ночью.",
+"Тот, кто не умеет терять, не умеет играть по-настоящему.",
+"Лучшее место для плана — голова, лучший способ для него — исполнение.",
+"Каждое «потом» превращается в «никогда».",
+"Тот, кто боится тени, боится и света.",
+"Сделай первый шаг, и страх уменьшится вдвое.",
+"Успех — это двадцать процентов способностей и восемьдесят процентов упрямства.",
+"Не гонись за лёгкими победами, они не учат.",
+"Каждое «не могу» на поверку оказывается «не хочу».",
+"Кто сравнивает себя с лучшими, растёт; кто сравнивает с худшими, топчется.",
+"Начни с малого, но делай это каждый день.",
+"Тот, кто не терпит боли, не получит победы.",
+"Твоя жизнь меняется тогда, когда меняешься ты, а не обстоятельства.",
+"Дисциплина — это разница между тем, чего ты хочешь сейчас, и тем, чего хочешь в итоге.",
+"Каждый день есть цена: либо прогресс, либо регресс.",
+"Не жди, что удача постучит, строй дверь заранее.",
+"Тот, кто экономит усилия, тратит годы.",
+"Мечта, умноженная на действия, равна результату.",
+"Каждый провал — это плата за обучение в университете жизни.",
+"Не жди, что мир подстроится, строй свой мир на своих правилах.",
+"Тот, кто не боится начинать с малого, однажды станет большим.",
+"Самое опасное — это слово «завтра».",
+"Каждый день спори не с другими, а с собой вчерашним.",
+"Тот, кто не ждёт, не опаздывает.",
+"Сила характера закаляется там, где слабые сдаются.",
+"Каждый раз, когда хочется сдаться, вспомни, почему ты начал.",
+"Тот, кто ставит рекорды, сначала бил рекорды собственных сомнений.",
+"Не считай чужие достижения, считай свои шаги.",
+"Тот, кто идёт к цели, не замечает ям, тот, кто смотрит вниз, падает в первую.",
+"Каждое усилие возвращается сторицей, просто не сразу.",
+"Не жди, что станет легче, когда станешь старше, становись умнее сейчас.",
+"Тот, кто не умеет отдыхать, не умеет работать.",
+"Свои ошибки учат лучше чужих советов.",
+"Каждый день добавляй не excuses, а причины гордиться собой.",
+"Тот, кто не бежит от трудностей, бежит к вершинам.",
+"Настоящая победа — та, которую ты одержал над собой.",
+"Каждый вечер ложись спать уставшим от дел, а не от мыслей.",
+"Тот, кто не верит в себя, верит в чужие прогнозы.",
+"Сделанное хоть как-то лучше идеального «ничего».",
+"Каждая новая глава жизни начинается с решения её написать.",
+"Тот, кто ждёт идеальных условий, ждёт конца времени.",
+"Не бойся тратить время на то, что любишь, — это лучшая инвестиция.",
+"Тот, кто не ставит экспериментов, не делает открытий.",
+"Волна упорства стирает скалу сомнений.",
+"Каждое утро — это возможность выбрать, кем ты будешь сегодня.",
+"Свои слабости превращай в проекты, свои недостатки — в задачи.",
+"Каждый день спрашивай не «а что будет», а «что я сделал».",
+"Тот, кто боится начать, боится и закончить.",
+"Настоящий рост виден не в цифрах, а в характере.",
+"Каждый день делай одно дело, которого боишься.",
+"Тот, кто ищет оправдания, находит их всегда.",
+"Сила воли — это не геройство раз в год, а скромное «да» каждый день.",
+"Каждое решение, принятое сегодня, освобождает завтра.",
+"Тот, кто не умеет терпеть, не умеет ждать результата.",
+"Не гонись за количеством, гонись за качеством своего роста.",
+"Каждый провал — это новый старт с бонусом опыта.",
+"Тот, кто не смеётся над собой, не научился быть свободным.",
+"Сделай сегодня чуть больше, чем вчера, и через год не узнаешь себя.",
+"Каждый день — это шанс исправить то, что можно исправить.",
+"Тот, кто не умеет ждать, не умеет достигать.",
+"Свои цели не откладывай, чужие выполнит кто-то другой.",
+"Каждая страница книги — это шаг, который ты делаешь для себя.",
+"Тот, кто не мечтает, не удивляется, когда сбываются чужие мечты.",
+"Настоящее преимущество — это способность продолжать, когда закончились силы.",
+"Каждый день — это экзамен, где списать нельзя.",
+"Тот, кто не боится одиночества, не боится неудач.",
+"Свои страхи называй по именам, и они уменьшатся.",
+"Каждое «позже» — это чужая победа.",
+"Тот, кто не ставит цели, сам становится средством чужих целей.",
+"Не жди вдохновения, приходи к столу — и оно придёт.",
+"Каждый день, прожитый без усилий, — это день, прожитый без истории.",
+"Тот, кто не сдается после первой ошибки, становится экспериментатором, а не неудачником.",
+"Сделанное своими руками — лучшее доказательство своей силы.",
+"Каждый день отбрасывай одно оправдание.",
+"Тот, кто не боится говорить о своих мечтах, однажды их осуществит.",
+"Свои границы узнавай, переходя их.",
+"Каждый раз, когда ты говоришь «не успею», кто-то успевает.",
+"Настоящая сила — в умении оставаться спокойным в шторм.",
+"Каждый день — это новый шанс исправить курс.",
+"Тот, кто не умеет проигрывать, не умеет начинать заново.",
+"Свои слабые стороны превращай в проекты развития.",
+"Каждое усилие — это вклад в свой будущий комфорт.",
+"Тот, кто не ждёт награды, получает больше всех.",
+"Не гонись за лёгкими победами, они забирают больше, чем дают.",
+"Каждый день сажай одно зерно — к осени будет сад.",
+"Тот, кто не боится одиночества, не боится ответственности.",
+"Свои мечты превращай в задачи, свои задачи — в привычки.",
+"Каждый раз, когда ты откладываешь, время откладывает тебя.",
+"Настоящий прогресс — это то, что видно в зеркале через годы, а не через дни.",
+"Каждый день выбирай одно важное дело и делай его первым.",
+"Тот, кто не боится критики, не боится роста.",
+"Свои ошибки не прячь, изучай их.",
+"Каждое усилие сегодня — это комплимент себе завтра.",
+"Тот, кто не ждёт разрешения, добивается большего.",
+"Не гонись за чужими рекордами, ставь свои.",
+"Каждый день умножай не тревоги, а усилия.",
+"Тот, кто не боится быть на виду, не боится быть собой.",
+"Свои мечты защищай трудом, а не спорами.",
+"Каждый раз, когда ты хочешь сдаться, кто-то сдался рядом.",
+"Тот, кто не умеет начинать, никогда не узнает, на что способен.",
+"Настоящая дисциплина — это когда никто не видит, а ты всё равно делаешь.",
+"Каждый день делай шаг, который завтра тебе не придётся жалеть.",
+"Тот, кто не боится выглядеть глупо, учится быстрее всех.",
+"Свои слабости не оправдывай, тренируй.",
+"Каждое «сейчас» — это кирпич, из которого строится будущее.",
+"Тот, кто не ждёт понедельника, побеждает в любом дне недели.",
+"Не гонись за совершенством, гонись за прогрессом.",
+"Каждый день — это новая глава, пиши её сам.",
+"Тот, кто не боится начинать с нуля, никогда не боится проиграть всё.",
+"Свои страхи превращай в задачи, свои задачи — в привычки.",
+"Каждый раз, когда ты отступаешь, гора становится выше.",
+"Тот, кто не умеет отдыхать, не умеет работать в полную силу.",
+"Настоящая победа — это когда побеждаешь вчерашнего себя.",
+"Каждый день находи десять минут для себя — это инвестиция, которая всегда окупается.",
+"Тот, кто не боится задавать вопросы, не боится учиться.",
+"Свои границы определяй, пробуя их на прочность.",
+"Каждое усилие — это вклад, а не трата.",
+"Тот, кто не ждёт идеального момента, находит его первым.",
+"Не гонись за признанием, признание приходит к тому, кто занят делом.",
+"Каждый день отбрасывай одно сомнение и добавляй одно действие.",
+"Тот, кто не боится быть одиноким, не боится и быть собой.",
+"Свои ошибки оплата за опыт, а не штраф.",
+"Каждый раз, когда ты сравниваешь себя с другими, ты теряешь время.",
+"Тот, кто не умеет ждать, не умеет видеть результат.",
+"Настоящий рост — это когда тебе вчера было трудно, а сегодня легко.",
+"Каждый день делай что-то, что сделает тебя гордым завтра.",
+"Тот, кто не боится спрашивать, не боится учиться.",
+"Свои страхи закаляй действием, а не размышлением.",
+"Каждое усилие — это кирпич, а не потеря.",
+"Тот, кто не ждёт внешней мотивации, находит внутреннюю.",
+"Не гонись за чужой славой, строй свою репутацию.",
+"Каждый день — это возможность превратить «хотел бы» в «сделал».",
+"Тот, кто не боится высоты, не боится и глубины.",
+"Свои слабые стороны превращай в направления роста.",
+"Каждый раз, когда ты говоришь «потом», ты отдаляешь свою мечту.",
+"Тот, кто не умеет отдыхать, не умеет долго работать.",
+"Настоящая сила — это умение продолжать, когда никто не верит.",
+"Каждый день — это новый шанс стать лучше.",
+"Тот, кто не боится быть неправым, не боится и быть правым.",
+"Свои мечты реализуй шагами, а не фантазиями.",
+"Каждое усилие возвращается сторицей, просто не сразу и не всегда так, как ждёшь.",
+"Тот, кто не ждёт понедельника, живёт в понедельник каждый день.",
+"Не гонись за количеством дел, гонись за их смыслом.",
+"Каждый день — это страница, которую ты пишешь сам.",
+"Тот, кто не боится начинать заново, никогда не проигрывает окончательно.",
+"Свои сомнения превращай в вопросы, а вопросы — в действия.",
+"Каждый раз, когда ты устаёшь, вспомни, ради чего ты начал.",
+"Тот, кто не умеет проигрывать, не умеет и выигрывать по-настоящему.",
+"Настоящая дисциплина — это когда никто не видит, а ты всё равно работаешь.",
+"Каждый день делай одно важное дело, и через год у тебя будет триста побед.",
+"Тот, кто не боится выглядеть глупо, растёт быстрее всех.",
+"Свои слабости не прячь, работай над ними.",
+"Каждое усилие — это инвестиция в себя, а не потеря времени.",
+"Тот, кто не ждёт разрешения, не ждёт и чужого одобрения.",
+"Не гонись за чужими стандартами, строй свои.",
+"Каждый день — это возможность стать тем, кем ты всегда хотел быть.",
+"Тот, кто не боится трудностей, не боится и побед.",
+"Свои страхи называй по именам, и они потеряют силу.",
+"Каждый раз, когда ты откладываешь на завтра, ты уменьшаешь своё будущее.",
+"Настоящий успех — это когда тебе не нужно никому ничего доказывать, кроме себя.",
+"Каждый день — это новая возможность начать жить по-своему.",
+"Тот, кто не боится ошибок, не боится и роста.",
+"Свои мечты превращай в план, свой план — в действие.",
+"Каждое усилие сегодня — это подарок себе завтра.",
+"Тот, кто не ждёт удачи, создаёт её сам.",
+"Не гонись за лёгкими путями, они не учат и не ведут далеко.",
+"Каждый день — это страница, которую ты заполняешь своим трудом.",
+"Тот, кто не боится быть непонятым, не боится быть собой.",
+"Свои границы узнавай, переходя их, а не спрашивая о них.",
+"Настоящая сила — это умение вставать, когда все вокруг говорят, что это невозможно.",
+"Каждый день делай то, что приближает тебя к цели, а не то, что отдаляет.",
+"Тот, кто не боится критики, не боится и совершенства.",
+"Свои слабости превращай в проекты, свои ошибки — в опыт.",
+"Каждое усилие — это кирпич в фундаменте твоего будущего.",
+"Тот, кто не ждёт понедельника, живёт по-своему каждый день.",
+"Не гонись за чужими достижениями, строй свои.",
+"Каждый день — это возможность превратить мечту в реальность.",
+"Тот, кто не боится начинать с малого, однажды станет великим.",
+"Свои страхи побеждай действием, а не ожиданием.",
+"Тот, кто не умеет отдыхать, не умеет и работать.",
+"Настоящий рост виден не в цифрах, а в характере и привычках.",
+"Каждый день делай что-то, что сделает тебя лучше, чем ты был вчера.",
+"Тот, кто не боится задавать вопросы, не боится и узнавать.",
+"Свои ошибки не прячь, используй их как ступени.",
+"Каждое усилие — это вклад в своё будущее, а не трата настоящего.",
+"Тот, кто не ждёт внешней мотивации, находит внутренний огонь.",
+"Не гонись за признанием, признание приходит к тому, кто занят делом, а не ожиданием.",
+"Каждый день отбрасывай одно оправдание и добавляй одно действие.",
+"Тот, кто не боится быть на виду, не боится и быть собой.",
+
+"Пока город спит, ты строишь себя заново.",
+"Настроение бежать приходит во время бега.",
+"Твои ноги созданы для дороги, а не для дивана.",
+"Каждая утренняя пробежка — голос за человека, которым ты хочешь стать.",
+"Прохладный утренний воздух отрезвляет лучше любых слов.",
+"Ты пожалеешь только о том, что остался в постели.",
+"Дисциплина — это выбор большего над меньшим.",
+"Первый километр самый трудный и самый важный.",
+"Солнце встречают только те, кто вышел.",
+"Лень шепчет ещё пять минут и съедает целый час.",
+"Утренний бег — это верность себе.",
+"Сегодняшнее утро никогда не повторится.",
+"Ты сильнее усталости, просто дойди до второго дыхания.",
+"Каждый шаг на рассвете — кирпич в фундамент новой жизни.",
+"Ум очищается на бегу сам собой.",
+"Утренняя пробежка — это разговор с собой без слов.",
+"Выходи даже тогда, когда совсем не хочется.",
+"Все оправдания остаются дома.",
+"Свежий воздух и ровное дыхание — лучшая бесплатная терапия.",
+"Пробежка лучше прокрутки ленты, и это не обсуждается.",
+"Капля пота утром дороже часа прокрастинации вечером.",
+"Бег — это свобода, которую никто не отнимет.",
+"Вставай раньше ради себя, а не ради дел.",
+"Утро задаёт тон всему дню, так задай его правильно.",
+"Твой ритм — единственный правильный.",
+"Каждый километр — победа над той частью тебя, что хотела остаться в постели.",
+"Лёгкие пути не делают тебя сильнее.",
+"Бег — инвестиция в себя с высокой доходностью.",
+"Усталость после пробежки приятная, она отличается от любой другой.",
+"Ты не обязан быть быстрым, ты обязан быть постоянным.",
+"Привычка строится не за день, но начинается с одного утра.",
+"Выходи на улицу, пока сомнения ещё спят.",
+"Твоё сердце бьётся быстрее — значит, ты жив.",
+"Не бойся медленного старта, бойся его отсутствия.",
+"Каждое утро — чистый лист, и первую строчку пишешь шагами.",
+"Тишина рассвета и звук собственных шагов — лучшая музыка.",
+"Ты можешь больше, чем думаешь, проверь это на дороге.",
+"Второе дыхание существует и ждёт за первым километром.",
+"Беги своим темпом, чужой тебя сломает.",
+"Не оглядывайся на вчерашние промахи.",
+"Пять минут бега лучше нуля минут и часа оправданий.",
+"Свежесть утра нельзя купить, её можно только пробежать.",
+"Утро принадлежит тем, кто встаёт, а не тем, кто собирается.",
+"Тело скажет спасибо уже через неделю регулярности.",
+"Ясность ума приходит от движения на воздухе.",
+"Каждый рассвет — приглашение начать заново.",
+"Ты просыпаешься ради себя, а не ради пробежки.",
+"Идеальное утро — то, в которое ты вышел.",
+"Утренний бег — маленький акт мужества, меняющий всё остальное.",
+"Твоя воля — мышца, и пробежка её тренирует.",
+"Возьми с собой только дыхание и намерение.",
+"Каждый вдох на рассвете напоминает, что ты жив.",
+"Ты бежишь к ясности, а не от проблем.",
+"Начни с одного круга, и однажды удивишься, как далеко ушёл.",
+"Лучшая версия тебя не любит ждать.",
+"Сделай это ради себя, а не ради чужих взглядов.",
+"Холодный воздух в лёгких — напоминание, что ты настоящий.",
+"Не откладывай на завтра то, что можно пробежать сегодня.",
+"Дорога зовёт тебя с первым лучом солнца.",
+"Лень проигрывает тому, кто просто встал и вышел.",
+"Каждый шаг — выбор в пользу жизни, а не существования.",
+"Ты заслуживаешь этой пробежки, даже если вчера всё шло не так.",
+"Двигайся вперёд, даже если медленно, главное не стоять.",
+"Разбуди мышцы, и они отблагодарят энергией на весь день.",
+"Быстрое сердцебиение утром — это не страх, это жизнь.",
+"Не оглядывайся на тех, кто ещё спит, у каждого свой путь.",
+"Каждый метр дистанции отвоёван у лени.",
+"Выбери движение, и день сложится сам.",
+"Твоя энергия растёт с каждым шагом.",
+"Не бойся усталости, бойся застоя.",
+"Усталость на рассвете — путь к силе на весь день.",
+"Беги своим темпом и дойдёшь дальше, чем думаешь.",
+"Поверь в свой ритм, он у тебя уже есть.",
+"Просто делай, и результат не заставит себя ждать.",
+"Утро — твой союзник, а не враг.",
+"Ты проснулся — значит, уже победил половину сомнений.",
+"Выходи на улицу, и воздух наполнит тебя силой.",
+"Каждый вдох на бегу — топливо для твоих целей.",
+"Ты создан для движения, не забывай об этом.",
+"Лень не имеет власти над тем, кто уже обулся.",
+"Встань с дивана, и мир сразу станет больше.",
+"Завтра начинается сегодня, не откладывай.",
+"Только сейчас — единственное время, которое у тебя есть.",
+"Этот момент твой, возьми его.",
+"Беги так, будто дышишь впервые.",
+"Почувствуй землю под ногами, она держит тебя.",
+"Ты часть этого мира, и он ждёт твоего движения.",
+"Ритм шагов — это медитация без слов.",
+"Отпусти стресс с каждым выдохом.",
+"Оставь проблемы дома, они подождут.",
+"Беги к ясности, и она придёт.",
+"Ум прояснится на дистанции, проверено.",
+"Ты найдёшь ответы в движении, а не в размышлениях.",
+"Жизнь — это движение, не сиди на месте.",
+"Двигайся, пока можешь, и ты сможешь больше.",
+"Ты можешь многое, начни с малого.",
+"Малое ведёт к великому, шаг за шагом.",
+"Твоя дисциплина — это твоя свобода.",
+"Каждое утро — это выбор, и ты уже выбрал.",
+"Выбери себя, выбери здоровье, выбери энергию.",
+"Выбери жизнь, а не существование.",
+"Не думай о результате, наслаждайся процессом.",
+"Процесс — это и есть жизнь.",
+"Утро, тишина и ты — этого достаточно.",
+"Твой бег — твоя история, пиши её ногами.",
+"Каждый след — слово в книге твоей жизни.",
+"Твоя дорога расскажет о тебе больше, чем слова.",
+"Будь тем, кто встаёт, и мир это заметит.",
+"Будь тем, кто выходит, когда другие сомневаются.",
+"Будь тем, кто бежит, и ты станешь собой.",
+"Ты уже тот, кто начал, продолжай.",
+"Не останавливайся на достигнутом.",
+"Дыши ровно, держи темп, смотри вперёд.",
+"Ты справишься, ты сильный и выносливый.",
+"Твои лёгкие работают, твои ноги несут, твоё сердце качает.",
+"Оно твой единственный дом, заботься о нём.",
+"Бег — это забота и любовь к себе.",
+"Это уважение к себе, и ты этого достоин.",
+"Начни с утра, и утро изменит всё.",
+"День за днём ты строишь новую версию себя.",
+"Кирпич за кирпичом, шаг за шагом, метр за метром.",
+"Не торопись, скорость придёт.",
+"Сначала регулярность, потом результат.",
+"Доверься процессу, ты на правильном пути.",
+"Продолжай бежать, продолжай дышать, продолжай жить.",
+"Ты здесь, ты сейчас, ты бежишь — этого достаточно.",
+"На сегодня достаточно, но завтра снова утро.",
+"И снова выбор — выбери бег, выбери себя.",
+"Снова и снова, пока это не станет тобой.",
+"Просто беги, всё остальное приложится.",
+"Утро твоё, ты готов, выходи.",
+"Беги, живи, дыши, шагай, лети.",
+"Это твой выбор, твой путь, твой бег.",
+"Твоё утро, твоя жизнь — беги.",
+"Просто беги, и всё.",
+"Следующий шаг, следующий вдох, следующий километр.",
+"Следующее утро, следующий ты.",
+"Лучше чем вчера, сильнее чем вчера.",
+"Быстрее чем вчера, свободнее чем вчера.",
+"Счастливее чем вчера — ты можешь.",
+"Ты сделаешь, ты уже делаешь.",
+"Прямо сейчас, в этот момент, в это утро.",
+"Ты бежишь, и это главное.",
+"Всё остальное подождёт, мир подождёт.",
+"Пока ты бежишь, потому что ты важнее.",
+"Твоё здоровье важнее, твоя энергия важнее.",
+"Твоё утро важнее, ты важнее — запомни это.",
+"И беги снова и снова, каждое утро.",
+"Пока можешь, пока дышишь, пока жив.",
+"А ты жив — значит, беги.",
+"Без лишних слов — только ты и дорога.",
+"Только ты и утро, только ты и бег.",
+"Начни сейчас, не жди, не сомневайся, не бойся.",
+"Ты справишься, ты уже справляешься.",
+"Свободным, сильным, смелым, счастливым.",
+"Утренним, свежим, новым — твоим.",
+"Начинай, продолжай, завершай и снова начинай.",
+"Цикл, ритм, дыхание, шаг, вдох, выдох.",
+"Бег, жизнь, утро, ты — всё.",
+"Начни, беги, живи здесь и сейчас.",
+"Всегда вперёд, легко и свободно.",
+"Только твоё, никто не отнимет.",
+"Это твой путь и твой бег.",
+"Твоё утро и твоя жизнь.",
+"Беги, просто беги, и всё.",
+"Следующий ты, лучше чем вчера.",
+"Ты можешь, ты сделаешь, ты уже делаешь.",
+"На этой дороге и под этим небом.",
+"С этим воздухом и с этим сердцем.",
+"Ты бежишь, и это главное.",
+"Всё остальное подождёт.",
+"Ты важнее, запомни это.",
+"А ты жив, значит беги.",
+"Вот и всё, просто и ясно.",
+"Честно и прямо, без лишних слов.",
+"Только ты и дорога.",
+"Не сомневайся, не бойся.",
+"Ты молодец и ты герой.",
+"Иди, беги, лети, живи.",
+"Люби, дыши, будь собой.",
+"Настоящим, живым и свободным.",
+"Сильным, смелым и счастливым.",
+"Утренним, свежим и новым.",
+"Твоим утром и твоим бегом.",
+"Твоей жизнью, твоим ритмом.",
+"Начинай, продолжай и завершай.",
+"И снова начинай, без конца."
+];
+
+/* Дедупликация — страховка от случайных повторов */
+(function dedupeQuotes() {
+  const seen = new Set();
+  const unique = [];
+  for (const q of quotes) {
+    const key = q.trim();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      unique.push(key);
+    }
+  }
+  quotes.length = 0;
+  quotes.push(...unique);
+})();
+
+/* =========================================================
+   2. ЦИТАТА ДНЯ
+   ========================================================= */
+function getDayOfYear(d) {
+  const start = new Date(d.getFullYear(), 0, 0);
+  return Math.floor((d - start) / 86400000);
+}
+function formatDateRu(d) {
+  const days = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  return days[d.getDay()] + ', ' + d.getDate() + ' ' + months[d.getMonth()];
+}
+function getTodayQuote() {
+  const now = new Date();
+  const day = getDayOfYear(now);
+  const index = day % quotes.length;
+  return {
+    quote: quotes[index],
+    num: index + 1,
+    total: quotes.length,
+    dateLabel: formatDateRu(now),
+    day
+  };
+}
+
+const $ = id => document.getElementById(id);
+const today = getTodayQuote();
+
+$('quote-num').textContent = String(today.num).padStart(4, '0');
+$('quote-total').textContent = today.total;
+$('today-label').textContent = today.dateLabel;
+$('big-num').textContent = String(today.num).padStart(3, '0');
+document.title = today.quote.slice(0, 60) + ' — Утренний бег';
+
+(function renderQuoteWords() {
+  const frag = document.createDocumentFragment();
+  const words = today.quote.split(' ');
+  words.forEach((w, i) => {
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.textContent = w;
+    span.style.animationDelay = (0.15 + i * 0.035) + 's';
+    frag.appendChild(span);
+    if (i < words.length - 1) frag.appendChild(document.createTextNode(' '));
+  });
+  const q = $('quote-text');
+  q.textContent = '';
+  q.appendChild(frag);
+})();
+
+/* =========================================================
+   3. ФОН: ЖИВАЯ СЦЕНА
+   ========================================================= */
+function getSkyForHour(h) {
+  const palette = {
+    0:  { skyTop:'#04070f', skyMid:'#0a1020', skyBot:'#141c30', sunY:'95%', sunSize:'0px',  sunCore:'#1a2540', sunMid:'#0a1020', sunEdge:'rgba(20,30,56,0)',   sunGlow:'rgba(20,40,80,0)',     ray:'rgba(30,50,100,0)',    cloud:'rgba(60,80,120,.30)', stars:1 },
+    4:  { skyTop:'#080e1e', skyMid:'#152038', skyBot:'#2a2a48', sunY:'92%', sunSize:'60px', sunCore:'#5a4a6a', sunMid:'#3a2a4a', sunEdge:'rgba(80,60,100,0)',   sunGlow:'rgba(120,80,160,.20)', ray:'rgba(120,90,160,.10)', cloud:'rgba(90,100,140,.32)', stars:.7 },
+    5:  { skyTop:'#1f2444', skyMid:'#3f3a5c', skyBot:'#8a5a5a', sunY:'84%', sunSize:'120px',sunCore:'#ffc890', sunMid:'#e09070', sunEdge:'rgba(200,120,90,0)',  sunGlow:'rgba(255,180,120,.30)',ray:'rgba(255,180,120,.16)',cloud:'rgba(200,150,160,.35)',stars:.3 },
+    6:  { skyTop:'#1a2440', skyMid:'#7a5a48', skyBot:'#ffb860', sunY:'74%', sunSize:'200px',sunCore:'#fff4c0', sunMid:'#ffd040', sunEdge:'rgba(255,180,60,0)',  sunGlow:'rgba(255,200,80,.55)', ray:'rgba(255,210,100,.24)',cloud:'rgba(255,220,180,.50)',stars:0 },
+    7:  { skyTop:'#3a4566', skyMid:'#b08060', skyBot:'#ffd090', sunY:'58%', sunSize:'220px',sunCore:'#fff8d0', sunMid:'#ffdc60', sunEdge:'rgba(255,200,80,0)',  sunGlow:'rgba(255,210,90,.50)', ray:'rgba(255,220,120,.20)',cloud:'rgba(255,240,220,.55)',stars:0 },
+    9:  { skyTop:'#4a6a9a', skyMid:'#7aa2c8', skyBot:'#c8d8e8', sunY:'38%', sunSize:'180px',sunCore:'#fffae0', sunMid:'#ffe480', sunEdge:'rgba(255,220,120,0)', sunGlow:'rgba(255,230,140,.40)',ray:'rgba(255,240,180,.16)',cloud:'rgba(255,255,255,.45)',stars:0 },
+    12: { skyTop:'#5a8ac8', skyMid:'#8ab8e0', skyBot:'#d0e4f0', sunY:'20%', sunSize:'150px',sunCore:'#fffef0', sunMid:'#fff0b0', sunEdge:'rgba(255,240,180,0)', sunGlow:'rgba(255,245,190,.35)',ray:'rgba(255,250,220,.12)',cloud:'rgba(255,255,255,.55)',stars:0 },
+    15: { skyTop:'#5a8ac8', skyMid:'#8ab8e0', skyBot:'#e8d0b0', sunY:'34%', sunSize:'180px',sunCore:'#fff8d0', sunMid:'#ffdc70', sunEdge:'rgba(255,210,90,0)',  sunGlow:'rgba(255,215,110,.38)',ray:'rgba(255,220,130,.16)',cloud:'rgba(255,240,210,.48)',stars:0 },
+    18: { skyTop:'#3a4060', skyMid:'#a06050', skyBot:'#f0a860', sunY:'64%', sunSize:'220px',sunCore:'#fff4c0', sunMid:'#ffc050', sunEdge:'rgba(255,170,60,0)',  sunGlow:'rgba(255,190,80,.55)', ray:'rgba(255,190,100,.22)',cloud:'rgba(255,210,160,.50)',stars:.1 },
+    19: { skyTop:'#2a3050', skyMid:'#7a5060', skyBot:'#d08060', sunY:'78%', sunSize:'200px',sunCore:'#ffe0a0', sunMid:'#e0a060', sunEdge:'rgba(200,130,80,0)',  sunGlow:'rgba(230,150,90,.45)', ray:'rgba(220,150,100,.18)',cloud:'rgba(230,160,120,.42)',stars:.3 },
+    20: { skyTop:'#1a2440', skyMid:'#2a3a5a', skyBot:'#4a4a6a', sunY:'90%', sunSize:'100px',sunCore:'#a08090', sunMid:'#6a4a6a', sunEdge:'rgba(100,60,100,0)',  sunGlow:'rgba(120,80,140,.25)', ray:'rgba(100,90,150,.12)', cloud:'rgba(160,140,170,.35)',stars:.6 },
+    22: { skyTop:'#0a1428', skyMid:'#142040', skyBot:'#2a2a48', sunY:'95%', sunSize:'40px', sunCore:'#2a3550', sunMid:'#1a2540', sunEdge:'rgba(30,40,70,0)',    sunGlow:'rgba(40,60,120,.15)',  ray:'rgba(40,60,120,.08)', cloud:'rgba(90,100,140,.30)',stars:.9 },
+    24: { skyTop:'#04070f', skyMid:'#0a1020', skyBot:'#141c30', sunY:'95%', sunSize:'0px',  sunCore:'#1a2540', sunMid:'#0a1020', sunEdge:'rgba(20,30,56,0)',   sunGlow:'rgba(20,40,80,0)',     ray:'rgba(30,50,100,0)',    cloud:'rgba(60,80,120,.30)', stars:1 }
+  };
+
+  const keys = Object.keys(palette).map(Number).sort((a,b)=>a-b);
+  let a = keys[0], b = keys[keys.length-1];
+  for (let i=0;i<keys.length-1;i++){
+    if (h >= keys[i] && h <= keys[i+1]) { a = keys[i]; b = keys[i+1]; break; }
+  }
+  const t = (b===a) ? 0 : (h-a)/(b-a);
+
+  function parse(c) {
+    if (c.startsWith('#')) {
+      const hh = c.slice(1);
+      return [parseInt(hh.slice(0,2),16), parseInt(hh.slice(2,4),16), parseInt(hh.slice(4,6),16), 1];
+    }
+    const m = c.match(/rgba?\(([^)]+)\)/);
+    if (!m) return [0,0,0,1];
+    const p = m[1].split(',').map(x=>parseFloat(x.trim()));
+    return [p[0], p[1], p[2], p[3] !== undefined ? p[3] : 1];
+  }
+  function lerpColor(c1, c2, t) {
+    const a1 = parse(c1), a2 = parse(c2);
+    return `rgba(${Math.round(a1[0]+(a2[0]-a1[0])*t)},${Math.round(a1[1]+(a2[1]-a1[1])*t)},${Math.round(a1[2]+(a2[2]-a1[2])*t)},${(a1[3]+(a2[3]-a1[3])*t).toFixed(3)})`;
+  }
+  function lerpStr(s1, s2, t) {
+    const v1 = parseFloat(s1), v2 = parseFloat(s2);
+    const u = s1.replace(/[\d.-]/g,'') || s2.replace(/[\d.-]/g,'');
+    return (v1+(v2-v1)*t) + u;
+  }
+
+  let sunX;
+  if (h < 6) sunX = 10 - (6 - h) * 5;
+  else if (h <= 12) sunX = 10 + (h - 6) * (40/6);
+  else if (h <= 18) sunX = 50 + (h - 12) * (40/6);
+  else sunX = 90 + (h - 18) * 5;
+  sunX = Math.max(-20, Math.min(120, sunX));
+
+  return {
+    skyTop: lerpColor(palette[a].skyTop, palette[b].skyTop, t),
+    skyMid: lerpColor(palette[a].skyMid, palette[b].skyMid, t),
+    skyBot: lerpColor(palette[a].skyBot, palette[b].skyBot, t),
+    sunX: sunX + '%',
+    sunY: lerpStr(palette[a].sunY, palette[b].sunY, t),
+    sunSize: lerpStr(palette[a].sunSize, palette[b].sunSize, t),
+    sunCore: lerpColor(palette[a].sunCore, palette[b].sunCore, t),
+    sunMid: lerpColor(palette[a].sunMid, palette[b].sunMid, t),
+    sunEdge: lerpColor(palette[a].sunEdge, palette[b].sunEdge, t),
+    sunGlow: lerpColor(palette[a].sunGlow, palette[b].sunGlow, t),
+    ray: lerpColor(palette[a].ray, palette[b].ray, t),
+    cloud: lerpColor(palette[a].cloud, palette[b].cloud, t),
+    stars: palette[a].stars + (palette[b].stars - palette[a].stars) * t
+  };
+}
+
+function applySkyTheme() {
+  const now = new Date();
+  const h = now.getHours() + now.getMinutes()/60;
+  const sky = getSkyForHour(h);
+  const r = document.documentElement;
+  r.style.setProperty('--sky-top', sky.skyTop);
+  r.style.setProperty('--sky-mid', sky.skyMid);
+  r.style.setProperty('--sky-bot', sky.skyBot);
+  r.style.setProperty('--sun-x', sky.sunX);
+  r.style.setProperty('--sun-y', sky.sunY);
+  r.style.setProperty('--sun-size', sky.sunSize);
+  r.style.setProperty('--sun-core', sky.sunCore);
+  r.style.setProperty('--sun-mid', sky.sunMid);
+  r.style.setProperty('--sun-edge', sky.sunEdge);
+  r.style.setProperty('--sun-glow', sky.sunGlow);
+  r.style.setProperty('--sun-glow-2', sky.sunGlow);
+  r.style.setProperty('--ray', sky.ray);
+  r.style.setProperty('--cloud-color', sky.cloud);
+  r.style.setProperty('--stars-opacity', sky.stars);
+}
+applySkyTheme();
+setInterval(applySkyTheme, 60 * 1000);
+
+/* =========================================================
+   4. ТОСТ
+   ========================================================= */
+const toastEl = $('toast');
+let toastTimer;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+
+/* =========================================================
+   5. СТРИК
+   ========================================================= */
+const STREAK_KEY = 'morning-streak';
+function dateKey(d){ return d.toISOString().slice(0,10); }
+function loadStreak() {
+  try { return JSON.parse(localStorage.getItem(STREAK_KEY) || '{"last":null,"count":0}'); }
+  catch(e){ return { last:null, count:0 }; }
+}
+function saveStreak(s){ localStorage.setItem(STREAK_KEY, JSON.stringify(s)); }
+function computeCurrentStreak(s) {
+  if (!s.last) return 0;
+  const last = new Date(s.last + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((today - last) / 86400000);
+  if (diff > 1) return 0;
+  return s.count;
+}
+function plural(n, forms) {
+  const n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return forms[0];
+  if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return forms[1];
+  return forms[2];
+}
+function renderStreak() {
+  const s = loadStreak();
+  const n = computeCurrentStreak(s);
+  const bigEl = $('streak-big');
+  const numEl = $('streak-num');
+  const wordEl = $('streak-word');
+  const hintEl = $('streak-hint');
+
+  numEl.textContent = n;
+  wordEl.textContent = plural(n, ['день подряд','дня подряд','дней подряд']);
+  if (n > 0) bigEl.classList.remove('zero');
+  else bigEl.classList.add('zero');
+
+  if (n === 0) hintEl.textContent = 'Первый день — самый важный.';
+  else if (n === 1) hintEl.textContent = 'Начало положено. Завтра не подведи.';
+  else if (n < 5) hintEl.textContent = 'Разгоняешься. Держи темп.';
+  else if (n < 14) hintEl.textContent = 'Привычка формируется.';
+  else hintEl.textContent = 'Это уже образ жизни.';
+
+  const btn = $('run-btn');
+  const todayKey = dateKey(new Date());
+  if (s.last === todayKey) {
+    btn.classList.add('done');
+    btn.innerHTML = 'Сегодня уже вышел <span class="k">done</span>';
+  } else {
+    btn.classList.remove('done');
+    btn.innerHTML = 'Я вышел <span class="k">go</span>';
+  }
+}
+
+/* =========================================================
+   6. ТРЕКЕР КИЛОМЕТРОВ
+   ========================================================= */
+const KM_KEY = 'morning-km-log';
+function loadKm() {
+  try { return JSON.parse(localStorage.getItem(KM_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function saveKm(log){ localStorage.setItem(KM_KEY, JSON.stringify(log)); }
+function kmStats() {
+  const log = loadKm();
+  const now = new Date();
+  const todayKey = dateKey(now);
+  let today = log[todayKey] || 0;
+  let week = 0, month = 0, record = 0;
+  const msDay = 86400000;
+  for (const k in log) {
+    const d = new Date(k + 'T00:00:00');
+    const diff = Math.floor((now - d) / msDay);
+    if (diff >= 0 && diff < 7) week += log[k];
+    if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) month += log[k];
+    if (log[k] > record) record = log[k];
+  }
+  return { today, week, month, record };
+}
+function renderKm() {
+  const log = loadKm();
+  const s = kmStats();
+  $('stat-today').textContent = s.today.toFixed(1);
+  $('stat-week').textContent = s.week.toFixed(1);
+  $('stat-month').textContent = s.month.toFixed(1);
+  $('stat-record').textContent = s.record.toFixed(1);
+
+  const chart = $('tracker-chart');
+  chart.innerHTML = '';
+  const now = new Date();
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    days.push({ key: dateKey(d), isToday: i === 0 });
+  }
+  const max = Math.max(1, ...days.map(d => log[d.key] || 0));
+  days.forEach(d => {
+    const km = log[d.key] || 0;
+    const bar = document.createElement('div');
+    bar.className = 'bar' + (km > 0 ? ' has' : '') + (d.isToday ? ' today' : '');
+    const h = km > 0 ? Math.max(8, (km / max) * 100) : 3;
+    bar.style.height = h + '%';
+    bar.title = d.key + ': ' + km.toFixed(1) + ' км';
+    chart.appendChild(bar);
+  });
+}
+$('tracker-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const input = $('tracker-input');
+  const v = parseFloat(String(input.value).replace(',', '.'));
+  if (!isFinite(v) || v <= 0) { showToast('Введи километры'); return; }
+  const log = loadKm();
+  const key = dateKey(new Date());
+  log[key] = (log[key] || 0) + v;
+  saveKm(log);
+  input.value = '';
+  renderKm();
+  showToast('+' + v.toFixed(1) + ' км');
+});
+
+/* =========================================================
+   7. СЧЁТЧИК «Я ВЫШЕЛ»
+   ========================================================= */
+const COUNTER_API = 'https://api.counterapi.dev/v1/morning-run-site';
+const EXITED_FLAG_KEY = 'morning-exited-today';
+
+function todayKeyStr() { return dateKey(new Date()); }
+
+async function counterGet(key) {
+  const res = await fetch(COUNTER_API + '/' + encodeURIComponent(key), { cache: 'no-store' });
+  if (!res.ok) throw new Error('counter get');
+  const d = await res.json();
+  return Number(d.count || d.value || 0);
+}
+async function counterUp(key) {
+  const res = await fetch(COUNTER_API + '/' + encodeURIComponent(key) + '/up', { cache: 'no-store' });
+  if (!res.ok) throw new Error('counter up');
+  const d = await res.json();
+  return Number(d.count || d.value || 0);
+}
+function renderCounter(total, today, opts) {
+  const line = $('counter-line');
+  const sub = $('counter-sub');
+  const msg = opts && opts.message;
+
+  if (msg) {
+    line.innerHTML = msg;
+  } else if (total != null && today != null) {
+    line.innerHTML =
+      'Сегодня уже вышли <b>' + today.toLocaleString('ru-RU') + '</b>. ' +
+      'Всего — <b>' + total.toLocaleString('ru-RU') + '</b>. ' +
+      'Что мешает тебе?';
+  }
+
+  sub.className = 'counter-sub';
+  if (opts && opts.subClass) sub.className += ' ' + opts.subClass;
+  if (opts && opts.sub) sub.textContent = opts.sub;
+  else sub.textContent = 'Ты не один. Выходи.';
+}
+async function loadCounter() {
+  const todayKey = 'today-' + todayKeyStr();
+  try {
+    const [total, today] = await Promise.all([
+      counterGet('total'),
+      counterGet(todayKey)
+    ]);
+    renderCounter(total, today);
+  } catch (e) {
+    const localTotal = parseInt(localStorage.getItem('local-exited-total') || '0', 10);
+    const localToday = parseInt(localStorage.getItem('local-exited-' + todayKeyStr()) || '0', 10);
+    if (localTotal > 0 || localToday > 0) {
+      renderCounter(localTotal, localToday, {
+        sub: 'Счётчик недоступен — показано локально',
+        subClass: 'warn'
+      });
+    } else {
+      renderCounter(null, null, {
+        message: 'Счётчик временно недоступен. Но ты всё равно выходи.',
+        sub: 'Проверь соединение',
+        subClass: 'warn'
+      });
+    }
+  }
+}
+async function incrementCounterOnExit() {
+  const todayKey = 'today-' + todayKeyStr();
+  const lineEl = $('counter-line');
+  function bumpNumbers() {
+    lineEl.querySelectorAll('b').forEach(b => {
+      b.classList.remove('bump');
+      void b.offsetWidth;
+      b.classList.add('bump');
+    });
+  }
+  try {
+    const [newTotal, newToday] = await Promise.all([
+      counterUp('total'),
+      counterUp(todayKey)
+    ]);
+    renderCounter(newTotal, newToday, {
+      sub: 'Ты в списке вышедших. Хорошего бега.',
+      subClass: 'ok'
+    });
+    bumpNumbers();
+    localStorage.setItem('local-exited-total', String(newTotal));
+    localStorage.setItem('local-exited-' + todayKeyStr(), String(newToday));
+  } catch (e) {
+    const localTotal = parseInt(localStorage.getItem('local-exited-total') || '0', 10) + 1;
+    const localToday = parseInt(localStorage.getItem('local-exited-' + todayKeyStr()) || '0', 10) + 1;
+    localStorage.setItem('local-exited-total', String(localTotal));
+    localStorage.setItem('local-exited-' + todayKeyStr(), String(localToday));
+    renderCounter(localTotal, localToday, {
+      sub: 'Записано локально (счётчик недоступен)',
+      subClass: 'warn'
+    });
+    bumpNumbers();
+  }
+}
+
+$('run-btn').addEventListener('click', () => {
+  const s = loadStreak();
+  const todayKey = dateKey(new Date());
+  const alreadyExitedToday = localStorage.getItem(EXITED_FLAG_KEY) === todayKey;
+
+  if (s.last === todayKey) {
+    showToast('Уже отмечено сегодня');
+    return;
+  }
+
+  const prev = computeCurrentStreak(s);
+  const newCount = (prev > 0 ? prev : 0) + 1;
+  s.last = todayKey;
+  s.count = newCount;
+  saveStreak(s);
+  renderStreak();
+
+  if (!alreadyExitedToday) {
+    localStorage.setItem(EXITED_FLAG_KEY, todayKey);
+    incrementCounterOnExit();
+  }
+
+  showToast(newCount === 1 ? 'Первый день. Не подведи завтра.' : 'День ' + newCount + '. Не подведи завтра.');
+});
+
+/* =========================================================
+   8. КОПИРОВАНИЕ / SHARE
+   ========================================================= */
+$('copy-btn').addEventListener('click', async () => {
+  const text = '«' + today.quote + '»';
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    showToast('Скопировано');
+  } catch (e) { showToast('Не удалось скопировать'); }
+});
+$('share-btn').addEventListener('click', async () => {
+  const data = { title: 'Утренний бег', text: '«' + today.quote + '»', url: location.href };
+  if (navigator.share) {
+    try { await navigator.share(data); } catch (e) {}
+  } else {
+    try {
+      await navigator.clipboard.writeText('«' + today.quote + '»\n\n' + location.href);
+      showToast('Ссылка скопирована');
+    } catch (e) { showToast('Share не поддерживается'); }
+  }
+});
+
+/* =========================================================
+   9. ПОГОДА В 6:00
+   ========================================================= */
+async function loadWeather() {
+  const tempEl = $('weather-temp');
+  const detailEl = $('weather-detail');
+  const adviceEl = $('weather-advice');
+
+  async function fetchWeather(lat, lon) {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat +
+      '&longitude=' + lon +
+      '&hourly=temperature_2m,precipitation_probability,wind_speed_10m&timezone=auto&forecast_days=1';
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('weather');
+    const d = await res.json();
+    const idx = d.hourly.time.findIndex(t => t.endsWith('T06:00'));
+    if (idx === -1) throw new Error('no6');
+    return {
+      temp: Math.round(d.hourly.temperature_2m[idx]),
+      prec: d.hourly.precipitation_probability[idx],
+      wind: Math.round(d.hourly.wind_speed_10m[idx])
+    };
+  }
+  function advice(w) {
+    if (w.prec >= 60) return 'Дождь. Характер — именно в такую погоду.';
+    if (w.temp <= -5) return 'Мороз. Одевайся слоями.';
+    if (w.temp <= 5) return 'Прохладно. Первый километр согреет.';
+    if (w.temp >= 25) return 'Жарко. Возьми воду и выходи раньше.';
+    if (w.wind >= 8) return 'Ветер. В лицо — тренировка.';
+    return 'Хорошая погода, чтобы выйти.';
+  }
+  try {
+    let lat = localStorage.getItem('geo-lat');
+    let lon = localStorage.getItem('geo-lon');
+    if (!lat || !lon) {
+      if (!navigator.geolocation) throw new Error('no geo');
+      const pos = await new Promise((ok, no) => {
+        navigator.geolocation.getCurrentPosition(ok, no, { timeout: 6000 });
+      });
+      lat = pos.coords.latitude.toFixed(3);
+      lon = pos.coords.longitude.toFixed(3);
+      localStorage.setItem('geo-lat', lat);
+      localStorage.setItem('geo-lon', lon);
+    }
+    const w = await fetchWeather(lat, lon);
+    tempEl.textContent = (w.temp > 0 ? '+' : '') + w.temp + '°';
+    detailEl.textContent = 'ветер ' + w.wind + ' м/с · осадки ' + w.prec + '%';
+    adviceEl.textContent = advice(w);
+  } catch (e) {
+    tempEl.textContent = '—°';
+    detailEl.textContent = 'погода недоступна';
+    adviceEl.textContent = 'Разреши геолокацию или проверь соединение.';
+  }
+}
+
+/* =========================================================
+   10. ТАЙМЕР ДО 6:00
+   ========================================================= */
+function tickTimer() {
+  const now = new Date();
+  const h = now.getHours();
+  const target = new Date(now);
+  target.setHours(6, 0, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  const diff = target - now;
+  const hh = Math.floor(diff / 3600000);
+  const mm = Math.floor((diff % 3600000) / 60000);
+  const ss = Math.floor((diff % 60000) / 1000);
+  const pad = n => String(n).padStart(2, '0');
+  const el = $('timer');
+  el.innerHTML = 'до 6:00 <b>' + pad(hh) + ':' + pad(mm) + ':' + pad(ss) + '</b>';
+  if (h >= 0 && h < 6) el.classList.add('alert');
+  else el.classList.remove('alert');
+}
+
+/* =========================================================
+   11. SERVICE WORKER + УВЕДОМЛЕНИЯ
+   ========================================================= */
+let swReg = null;
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    swReg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+    return swReg;
+  } catch (e) { console.warn('SW error', e); return null; }
+}
+const NOTIFY_KEY = 'morning-reminder-enabled';
+const notifyBtn = $('notify-btn');
+const notifyOffBtn = $('notify-off-btn');
+const notifyStatus = $('notify-status');
+
+function setStatus(text, cls) {
+  notifyStatus.className = 'status ' + (cls || '');
+  notifyStatus.textContent = text;
+}
+function updateNotifyUI(on) {
+  notifyBtn.hidden = on;
+  notifyOffBtn.hidden = !on;
+}
+async function enableReminder() {
+  if (!('Notification' in window)) {
+    setStatus('Браузер не поддерживает уведомления.', 'warn');
+    return;
+  }
+  let perm = Notification.permission;
+  if (perm !== 'granted') perm = await Notification.requestPermission();
+  if (perm !== 'granted') {
+    setStatus('Разрешение не выдано.', 'warn');
+    return;
+  }
+  const reg = await registerSW();
+  let periodicOk = false;
+  if (reg && 'periodicSync' in reg) {
+    try {
+      const st = await navigator.permissions.query({ name: 'periodic-background-sync' });
+      if (st.state === 'granted') {
+        await reg.periodicSync.register('morning-quote', { minInterval: 24*60*60*1000 });
+        periodicOk = true;
+      }
+    } catch (e) {}
+  }
+  if (reg) {
+    const t = reg.active || reg.waiting || reg.installing;
+    if (t) t.postMessage({ type: 'SET_QUOTE', quote: today.quote, dateLabel: today.dateLabel });
+  }
+  startLocalTimer();
+  localStorage.setItem(NOTIFY_KEY, '1');
+  updateNotifyUI(true);
+
+  if (periodicOk) setStatus('Напоминание включено. Фоновые уведомления в 06:00 активны.', 'ok');
+  else setStatus('Напоминание включено. Пока вкладка открыта — сработает в 06:00. Для фоновых на Android добавь сайт на главный экран (PWA). На iOS фоновые push без бэкенда не работают.', 'warn');
+
+  const icon = 'data:image/svg+xml,' + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='#0a0a0a'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='#ffb000' font-family='sans-serif'>↑</text></svg>");
+  const opts = { body: '«' + today.quote + '»', tag: 'test', icon };
+  if (reg && reg.showNotification) reg.showNotification('Утренний бег · 6:00', opts);
+  else if (Notification.permission === 'granted') new Notification('Утренний бег · 6:00', opts);
+}
+let localTimerId = null;
+function startLocalTimer() {
+  if (localTimerId) clearTimeout(localTimerId);
+  const now = new Date();
+  const target = new Date(now);
+  target.setHours(6, 0, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  localTimerId = setTimeout(async () => {
+    const reg = swReg || await navigator.serviceWorker.getRegistration();
+    const q = getTodayQuote();
+    const icon = 'data:image/svg+xml,' + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='#0a0a0a'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='#ffb000' font-family='sans-serif'>↑</text></svg>");
+    const opts = { body: '«' + q.quote + '»', tag: 'morning-' + q.day, icon };
+    if (reg && reg.showNotification) reg.showNotification('Пора бежать', opts);
+    else if (Notification.permission === 'granted') new Notification('Пора бежать', opts);
+    startLocalTimer();
+  }, target - now);
+}
+async function disableReminder() {
+  localStorage.removeItem(NOTIFY_KEY);
+  if (localTimerId) { clearTimeout(localTimerId); localTimerId = null; }
+  const reg = swReg || await navigator.serviceWorker.getRegistration();
+  if (reg && 'periodicSync' in reg) {
+    try { await reg.periodicSync.unregister('morning-quote'); } catch (e) {}
+  }
+  updateNotifyUI(false);
+  setStatus('Напоминание выключено.', '');
+}
+notifyBtn.addEventListener('click', enableReminder);
+notifyOffBtn.addEventListener('click', disableReminder);
+
+/* =========================================================
+   12. ИНИЦИАЛИЗАЦИЯ
+   ========================================================= */
+(async function init() {
+  renderStreak();
+  renderKm();
+  loadCounter();
+  loadWeather();
+  tickTimer();
+  setInterval(tickTimer, 1000);
+
+  swReg = await registerSW();
+  if (swReg) {
+    const t = swReg.active || swReg.waiting || swReg.installing;
+    if (t) t.postMessage({ type: 'SET_QUOTE', quote: today.quote, dateLabel: today.dateLabel });
+  }
+
+  const wasEnabled = localStorage.getItem(NOTIFY_KEY) === '1';
+  if (wasEnabled && 'Notification' in window && Notification.permission === 'granted') {
+    updateNotifyUI(true);
+    startLocalTimer();
+    setStatus('Напоминание включено. Уведомление в 06:00.', 'ok');
+  } else {
+    updateNotifyUI(false);
+    if (!('Notification' in window)) setStatus('Браузер не поддерживает уведомления.', 'warn');
+    else if (Notification.permission === 'denied') setStatus('Уведомления заблокированы в настройках сайта.', 'warn');
+    else if (location.protocol !== 'https:' && location.hostname !== 'localhost') setStatus('Для уведомлений и PWA нужен HTTPS.', 'warn');
+  }
+})();
+</script>
+</body>
+</html>
